@@ -1720,13 +1720,17 @@ async function loadCloud(){
   const d=await rpc('load_profile');
   me={username:d.username,is_admin:!!d.is_admin,admin_unlocked:!!d.admin_unlocked};
   if(d.save&&typeof d.save==='object')Object.assign(S,d.save);   /* a nuvem manda no progresso */
-  S.gold=+d.gold||0;                                              /* gold e carros exclusivos: sempre do servidor */
+  S.gold=+d.gold||0;S._rev=d.rev|0;                                              /* gold e carros exclusivos: sempre do servidor */
   const keep=(S.own||[0]).filter(i=>!isEx(i)),add=(d.cars||[]).map(id=>CIDX[id]).filter(i=>i!=null);
   S.own=Array.from(new Set(keep.concat(add)));seedCust();if(!S.own.includes(S.sel))S.sel=0;
   save();ready=true;if(!d.save)await push(true);else lastSnap=JSON.stringify(S);
   refresh();}
 async function push(force){if(!ready||!me||busy)return;const sn=JSON.stringify(S);if(!force&&sn===lastSnap)return;busy=true;
-  try{await rpc('save_game',{p_save:JSON.parse(sn),p_money:Math.max(0,Math.floor(+S.money||0))});lastSnap=sn;}catch(e){}busy=false;}
+  try{const r=await rpc('save_game',{p_save:JSON.parse(sn),p_money:Math.max(0,Math.floor(+S.money||0))});lastSnap=sn;if(r&&r.refresh)needSync=true;}catch(e){}busy=false;}
+/* alterações feitas por administrador (nível/saldo/códigos): recarrega a conta do servidor sem esperar o jogador reabrir o jogo */
+let needSync=false;
+async function syncRev(){if(!ready||!me||busy||running)return;try{if(needSync){needSync=false;await loadCloud();return;}const v=await rpc('profile_rev');if((v|0)!==(S._rev|0))await loadCloud();}catch(e){}}
+setInterval(syncRev,20000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)syncRev();});
 setInterval(()=>push(false),15000);
 document.addEventListener('visibilitychange',()=>{if(document.hidden)push(false);});addEventListener('pagehide',()=>{push(true);});
 function refresh(){try{build(S.sel);}catch(e){}
@@ -1915,6 +1919,165 @@ g('aoCfGo').onclick=async()=>{const m=g('aoCfC').value,n=+g('aoCfN').value,v=+g(
   try{const r=await rpc('admin_create_codes',{p_category:m,p_quantity:n,p_reward_money:m==='money'?v:0,p_reward_gold:m==='gold'?v:0,p_max_uses:u});const o=g('aoCfOut');o.style.display='block';o.value=r.codes.join('\n');g('aoCfCp').style.display='block';toast(r.codes.length+' código(s) criado(s)');stats();load(true);}
   catch(e){toast(errMsg(e));}g('aoCfGo').disabled=false;};
 g('aoCfCp').onclick=()=>copy(g('aoCfOut').value);
+/* ================= ADMIN: CONTAS, GERENCIAR CÓDIGOS, HISTÓRICO ADM ================= */
+(function(){
+const css=document.createElement('style');css.textContent=`
+#adm .tabs2{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding:6px 0 4px}
+#adm .tabs2 button{padding:9px 4px;border-radius:12px;border:1px solid #39466f;background:#10162b;color:#fff;font-weight:800;font-size:11px;line-height:1.25;letter-spacing:.02em}
+#adm .tabs2 button.on{background:linear-gradient(90deg,#ff3b3b,#ff7a1a);border-color:transparent}
+#adm .pane{display:none}#adm .pane.on{display:block}
+#adm .ac{flex-wrap:wrap}#adm .ac button{flex:1 1 28%}
+#adm .acc{background:#101629;border:1px solid #27315a;border-radius:14px;padding:11px 12px;margin:8px 0}
+#adm .acc .nm{font-size:17px;font-weight:900}
+#adm .acc .id{font-family:ui-monospace,Menlo,monospace;font-size:11px;opacity:.6;word-break:break-all}
+#adm .role{font-size:10px;font-weight:900;letter-spacing:.08em;padding:3px 8px;border-radius:999px;background:#334155}
+#adm .role.ad{background:#f43f5e}
+#adm .box2{background:#121830;border:1px solid #27315a;border-radius:14px;padding:12px;margin:10px 0}
+#adm .box2 h3{margin:0 0 8px;font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:#ffd23a}
+#adm .g3{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:8px}
+#adm .g3 .btn{padding:11px 4px;font-size:11px;line-height:1.2}
+#adm .btn.dg{background:#b91c1c}
+#adm .lst{font-size:12px;color:#c8d0ea;line-height:1.7}
+#adm .lst .it{display:flex;justify-content:space-between;align-items:center;gap:8px;border-bottom:1px solid #ffffff12;padding:5px 0}
+#adm .lst .it button{flex:none;padding:7px 10px;font-size:11px;border-radius:8px;width:auto}
+#adm .au{border-bottom:1px solid #ffffff14;padding:9px 2px;font-size:12px;line-height:1.5}
+#adm .au b{color:#ffd23a}#adm .au .d{opacity:.6;font-size:11px}
+#aoSheet{position:fixed;inset:0;z-index:20;background:rgba(3,5,12,.82);display:none;align-items:center;justify-content:center;padding:14px;overflow:auto}
+#aoSheet.on{display:flex}
+#aoSheet .sc2{width:min(420px,100%);max-height:100%;overflow:auto;background:linear-gradient(180deg,#171d33,#0d1122);border:1px solid #34406a;border-radius:18px;padding:16px;animation:aoin .25s}
+#aoSheet h3{margin:0 0 8px;font-size:18px;font-style:italic}
+#aoSheet .ln{font-size:14px;line-height:1.6;color:#dbe2f5}
+#aoSheet .ln b{color:#fff}
+#aoSheet label{display:block;font-size:11px;letter-spacing:.08em;text-transform:uppercase;opacity:.7;margin:10px 0 4px}
+#aoSheet input,#aoSheet select{width:100%;padding:12px;border-radius:10px;border:1px solid #39466f;background:#0a0e1c;color:#fff;font:inherit;font-size:16px;outline:0;user-select:text;-webkit-user-select:text}
+#aoSheet .row2{display:flex;gap:8px;margin-top:14px}#aoSheet .row2>*{flex:1}
+#aoSheet .btn{padding:13px 10px;border:0;border-radius:12px;color:#fff;font-weight:800;font-size:14px;background:rgba(255,255,255,.14)}
+#aoSheet .btn.go{background:#16a34a}#aoSheet .btn.dg{background:#b91c1c}
+#aoSheet .chk{display:flex;gap:8px;align-items:center;margin-top:10px;font-size:13px}#aoSheet .chk input{width:20px;height:20px;flex:none}
+`;document.head.appendChild(css);
+
+/* ---- estrutura: abas + painéis ---- */
+const wrap=adm.querySelector('.wrap'),hd=wrap.querySelector('.hd');
+const pCod=document.createElement('div');pCod.id='aoPCod';pCod.className='pane on';
+[...wrap.children].forEach(el=>{if(el!==hd&&el.id!=='aoToast')pCod.appendChild(el);});
+const tabs=document.createElement('div');tabs.className='tabs2';tabs.id='aoTabs';
+tabs.innerHTML='<button data-t="Cod" class="on">🎟 GERENCIAR CÓDIGOS</button><button data-t="Acc">👤 CONSULTAR CONTA</button><button data-t="Aud">📜 HISTÓRICO ADM</button>';
+const pAcc=document.createElement('div');pAcc.id='aoPAcc';pAcc.className='pane';
+pAcc.innerHTML='<div class="tl" style="margin-top:6px"><input id="aoAq" placeholder="Nome do jogador ou ID da conta" autocomplete="off" autocapitalize="off" spellcheck="false" style="flex:1"><button class="btn go" id="aoAgo" style="flex:none;padding:0 16px">CONSULTAR</button></div><div id="aoAres"></div>';
+const pAud=document.createElement('div');pAud.id='aoPAud';pAud.className='pane';
+pAud.innerHTML='<input id="aoUq" placeholder="🔍 Filtrar por administrador, conta ou ação…" autocomplete="off" style="margin-top:8px"><div id="aoUl"></div><div class="mt" id="aoUm"></div><button class="btn" id="aoUmore" style="display:none;width:100%">CARREGAR MAIS</button>';
+hd.after(tabs);tabs.after(pCod,pAcc,pAud);
+const sheetEl=document.createElement('div');sheetEl.id='aoSheet';adm.appendChild(sheetEl);
+['keydown','keyup','keypress'].forEach(n=>sheetEl.addEventListener(n,e=>e.stopPropagation()));
+tabs.onclick=e=>{const b=e.target.closest('[data-t]');if(!b)return;[...tabs.children].forEach(x=>x.classList.toggle('on',x===b));
+  ['Cod','Acc','Aud'].forEach(t=>g('aoP'+t).classList.toggle('on',t===b.dataset.t));
+  if(b.dataset.t==='Aud'&&!AU.rows.length)loadAud(true);};
+
+/* ---- utilidades ---- */
+const num=v=>{const n=Number(String(v==null?'':v).replace(/[^\d]/g,''));return isFinite(n)?n:0;};
+const rid=()=>(crypto&&crypto.randomUUID?crypto.randomUUID():'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,c=>{const r=Math.random()*16|0;return(c==='x'?r:(r&3|8)).toString(16);}));
+const L2X=l=>l<=51?100*(l-1)*(l-1):250000+(l-51)*4000;
+function sheet(html){return new Promise(res=>{sheetEl.innerHTML='<div class="sc2">'+html+'</div>';sheetEl.classList.add('on');
+  sheetEl.onclick=e=>{const b=e.target.closest('[data-r]');if(b){const v=b.dataset.r;const o={ok:v==='ok',vals:{}};sheetEl.querySelectorAll('input,select').forEach(i=>{o.vals[i.id]=i.type==='checkbox'?i.checked:i.value;});sheetEl.classList.remove('on');sheetEl.innerHTML='';res(o);}
+    else if(e.target===sheetEl){sheetEl.classList.remove('on');sheetEl.innerHTML='';res({ok:false,vals:{}});}};});}
+const confirmSheet=(title,lines,danger,okTxt)=>sheet('<h3>'+title+'</h3><div class="ln">'+lines.join('<br>')+'</div><div class="row2"><button class="btn" data-r="no">CANCELAR</button><button class="btn '+(danger?'dg':'go')+'" data-r="ok">'+(okTxt||'CONFIRMAR')+'</button></div>');
+const when=s=>{try{return dt(s);}catch(e){return '';}};
+
+/* ---- CONSULTAR CONTA ---- */
+const AC={list:[],cur:null,cur_id:null};
+async function findAcc(){const q=g('aoAq').value.trim();if(q.length<2){toast('Digite ao menos 2 caracteres');return;}
+  g('aoAgo').disabled=true;g('aoAres').innerHTML='<div class="mt">Consultando…</div>';
+  try{AC.list=await rpc('admin_find_account',{p_query:q});AC.cur=null;drawList();}catch(e){g('aoAres').innerHTML='<div class="mt" style="color:#ff9b9b">'+esc(errMsg(e))+'</div>';}
+  g('aoAgo').disabled=false;}
+function drawList(){if(!AC.list.length){g('aoAres').innerHTML='<div class="mt">Nenhuma conta encontrada.</div>';return;}
+  g('aoAres').innerHTML=AC.list.map(a=>'<div class="acc" data-id="'+a.id+'"><div class="cdh"><span class="nm">'+esc(a.username)+'</span><span class="role'+(a.role.indexOf('Admin')==0?' ad':'')+'">'+esc(a.role.toUpperCase())+'</span></div>'+
+    '<div class="rw">⭐ Nível <b>'+fmt(a.level)+'</b> · 💰 $ '+fmt(a.money)+' · 🪙 '+fmt(a.gold)+' Gold</div><div class="id">'+a.id+'</div>'+
+    '<div class="ac"><button class="btn go" data-a="open">ABRIR CONTA</button></div></div>').join('');}
+g('aoAgo').onclick=findAcc;g('aoAq').addEventListener('keydown',e=>{if(e.key==='Enter')findAcc();});
+g('aoAres').addEventListener('click',e=>{const b=e.target.closest('[data-a]');if(!b)return;const card=b.closest('[data-id]');const id=card&&card.dataset.id;
+  if(b.dataset.a==='open'){AC.cur=AC.list.find(a=>a.id===id);drawAcc();}
+  else if(b.dataset.a==='back'){AC.cur=null;drawList();}
+  else if(b.dataset.a==='cpid'){copy(AC.cur.id);}
+  else if(b.dataset.a==='lv')opLevel(b.dataset.m);
+  else if(b.dataset.a==='bal')opBal(b.dataset.m);
+  else if(b.dataset.a==='rvk')opRevoke(+b.dataset.c,b.dataset.n);
+  else if(b.dataset.a==='ref')reloadAcc();});
+function drawAcc(){const a=AC.cur;if(!a)return;const cur=g('aoCur')?g('aoCur').value:'gold';
+  const codes=(a.codes||[]).map(c=>'<div class="it"><span><b>'+esc(c.code)+'</b> · '+esc((CL[c.category]||[c.category])[0])+' · '+when(c.at)+'</span>'+(c.code_id?'<button class="btn dg" data-a="rvk" data-c="'+c.code_id+'" data-n="'+esc(c.code)+'">REMOVER CÓDIGO RESGATADO</button>':'<small style="opacity:.6">mítico</small>')+'</div>').join('')||'<div class="it">Nenhum código resgatado.</div>';
+  const cars=(a.cars||[]).map(c=>'<div class="it">🏎️ '+esc(c)+'</div>').join('')||'<div class="it">Nenhum carro exclusivo.</div>';
+  g('aoAres').innerHTML='<div class="acc" data-id="'+a.id+'"><button class="btn" data-a="back" style="padding:8px 12px;margin-bottom:8px">◀ VOLTAR</button>'+
+   '<div class="cdh"><span class="nm">'+esc(a.username)+'</span><span class="role'+(a.role.indexOf('Admin')==0?' ad':'')+'">'+esc(a.role.toUpperCase())+'</span></div>'+
+   '<div class="id">'+a.id+' <button data-a="cpid" style="background:none;border:0;color:#7dd3fc;text-decoration:underline;padding:2px 6px">copiar</button></div>'+
+   '<div class="sg"><div class="sc"><b>'+fmt(a.level)+'</b><span>Nível</span></div><div class="sc"><b>'+fmt(a.xp)+'</b><span>XP</span></div><div class="sc"><b>'+fmt(a.money)+'</b><span>Dinheiro $</span></div><div class="sc"><b>'+fmt(a.gold)+'</b><span>Gold</span></div></div>'+
+   '<div class="box2"><h3>⭐ Nível</h3><input id="aoLv" inputmode="numeric" placeholder="Quantidade de níveis"><div class="g3"><button class="btn go" data-a="lv" data-m="add">ADICIONAR NÍVEL</button><button class="btn dg" data-a="lv" data-m="sub">DIMINUIR NÍVEL</button><button class="btn" data-a="lv" data-m="set">DEFINIR NÍVEL</button></div></div>'+
+   '<div class="box2"><h3>💰 Dinheiro / Gold</h3><select id="aoCur"><option value="gold"'+(cur==='gold'?' selected':'')+'>🪙 Gold</option><option value="money"'+(cur==='money'?' selected':'')+'>💵 Dinheiro ($)</option></select>'+
+   '<input id="aoBv" inputmode="numeric" placeholder="Valor" style="margin-top:8px"><div class="g3"><button class="btn go" data-a="bal" data-m="add" id="aoBa">ADICIONAR GOLD</button><button class="btn dg" data-a="bal" data-m="sub" id="aoBs">RETIRAR GOLD</button><button class="btn" data-a="bal" data-m="set">DEFINIR SALDO</button></div></div>'+
+   '<input id="aoWhy" placeholder="Motivo (opcional, fica no histórico)" maxlength="200" autocomplete="off">'+
+   '<div class="box2"><h3>🎟 Códigos resgatados ('+(a.codes||[]).length+')</h3><div class="lst">'+codes+'</div></div>'+
+   '<div class="box2"><h3>🏎️ Carros desbloqueados ('+(a.cars||[]).length+')</h3><div class="lst">'+cars+'</div></div>'+
+   '<div class="mt">Criada em '+when(a.created_at)+(a.save_updated_at?' · último salvamento '+when(a.save_updated_at):'')+'</div><button class="btn" data-a="ref" style="width:100%">⟳ ATUALIZAR DADOS DA CONTA</button></div>';
+  const sync=()=>{const n=g('aoCur').value==='gold'?'GOLD':'DINHEIRO';g('aoBa').textContent='ADICIONAR '+n;g('aoBs').textContent='RETIRAR '+n;};g('aoCur').onchange=sync;sync();}
+async function reloadAcc(){if(!AC.cur)return;try{const r=await rpc('admin_find_account',{p_query:AC.cur.id});if(r[0]){const i=AC.list.findIndex(x=>x.id===r[0].id);if(i>=0)AC.list[i]=r[0];AC.cur=r[0];const keep=g('aoWhy')?g('aoWhy').value:'';drawAcc();g('aoWhy').value=keep;}}catch(e){toast(errMsg(e));}}
+const why=()=>(g('aoWhy')?g('aoWhy').value.trim():'')||null;
+async function opLevel(mode){const a=AC.cur,v=num(g('aoLv').value);if(!v){toast('Digite a quantidade de níveis');return;}
+  if(mode!=='set'&&v>999||mode==='set'&&(v<1||v>1000)){toast('Valor de nível inválido');return;}
+  const nl=mode==='add'?Math.min(1000,a.level+v):mode==='sub'?Math.max(1,a.level-v):v;if(nl===a.level){toast('O nível já é '+a.level);return;}
+  const down=nl<a.level;
+  const o=await confirmSheet(down?'⚠ Diminuir nível':'Confirmar alteração de nível',['Conta: <b>'+esc(a.username)+'</b>','Nível atual: <b>'+a.level+'</b>  →  novo nível: <b>'+nl+'</b>','XP novo: <b>'+fmt(L2X(nl))+'</b>',down?'<span style="color:#ff9b9b">Isso reduz o progresso do jogador.</span>':''],down,'CONFIRMAR');
+  if(!o.ok)return;
+  try{const r=await rpc('admin_adjust_level',{p_user:a.id,p_mode:mode,p_value:v,p_reason:why(),p_request_id:rid(),p_expected_level:a.level,p_confirm:true});
+    toast(r.duplicate?'Operação já havia sido aplicada':'Nível alterado para '+r.level);g('aoLv').value='';await reloadAcc();}catch(e){toast(errMsg(e));if(/mudou desde/.test(errMsg(e)))reloadAcc();}}
+async function opBal(mode){const a=AC.cur,cur=g('aoCur').value,v=num(g('aoBv').value),nm=cur==='gold'?'Gold':'Dinheiro ($)',bal=cur==='gold'?a.gold:a.money;
+  if(mode!=='set'&&v<1){toast('Digite um valor');return;}if(mode==='set'&&g('aoBv').value.trim()===''){toast('Digite o saldo exato');return;}
+  const nv=mode==='add'?bal+v:mode==='sub'?Math.max(0,bal-v):v;if(nv>1e12){toast('O saldo passaria de 1 trilhão');return;}if(nv===bal){toast('O saldo já é '+fmt(bal));return;}
+  const down=nv<bal;
+  const o=await confirmSheet(down?'⚠ Retirar '+nm:'Confirmar alteração de '+nm,['Conta: <b>'+esc(a.username)+'</b>','Saldo atual: <b>'+fmt(bal)+'</b>','Novo saldo: <b>'+fmt(nv)+'</b> ('+(nv>=bal?'+':'−')+fmt(Math.abs(nv-bal))+')',down&&mode==='sub'&&v>bal?'<span style="color:#ffd27a">O valor é maior que o saldo: ficará em 0.</span>':''],down,'CONFIRMAR');
+  if(!o.ok)return;
+  try{const r=await rpc('admin_adjust_balance',{p_user:a.id,p_currency:cur,p_mode:mode,p_value:v,p_reason:why(),p_request_id:rid(),p_expected:bal,p_confirm:true});
+    toast(r.duplicate?'Operação já havia sido aplicada':nm+': '+fmt(r.balance));g('aoBv').value='';await reloadAcc();}catch(e){toast(errMsg(e));if(/mudou desde/.test(errMsg(e)))reloadAcc();}}
+async function opRevoke(cid,code){const a=AC.cur;
+  const o=await sheet('<h3>⚠ Remover código resgatado</h3><div class="ln">Conta: <b>'+esc(a.username)+'</b><br>Código: <b>'+esc(code)+'</b><br>O jogador poderá resgatar este código de novo.</div>'+
+    '<div class="chk"><input type="checkbox" id="tk"><label for="tk" style="margin:0;text-transform:none;letter-spacing:0;opacity:1">Retirar também as recompensas (dinheiro, gold e carro do código)</label></div>'+
+    '<div class="row2"><button class="btn" data-r="no">CANCELAR</button><button class="btn dg" data-r="ok">REMOVER</button></div>');
+  if(!o.ok)return;
+  try{const r=await rpc('admin_revoke_redemption',{p_code_id:cid,p_user:a.id,p_take_back:!!o.vals.tk,p_reason:why(),p_confirm:true});toast('Resgate removido'+(o.vals.tk?' e recompensas retiradas':''));await reloadAcc();load(true);stats();}catch(e){toast(errMsg(e));}}
+
+/* ---- HISTÓRICO ADM ---- */
+const AU={rows:[],total:0,q:'',loading:false};
+const ACT={level_add:'Adicionou nível',level_sub:'Diminuiu nível',level_set:'Definiu nível',money_add:'Adicionou dinheiro',money_sub:'Retirou dinheiro',money_set:'Definiu saldo de dinheiro',gold_add:'Adicionou gold',gold_sub:'Retirou gold',gold_set:'Definiu saldo de gold',
+  code_delete:'Excluiu código',code_edit:'Editou código',code_revoke:'Removeu resgate',code_revoke_takeback:'Removeu resgate e devolveu recompensas'};
+function auVal(a,v){if(!v)return '—';if(v.level!=null)return 'nível '+v.level;if(v.balance!=null)return fmt(+v.balance);
+  if(v.code!=null){const p=[];if(v.reward_money!=null)p.push('$ '+fmt(+v.reward_money));if(v.reward_gold!=null)p.push(fmt(+v.reward_gold)+' gold');if(v.car_id)p.push(esc(v.car_id));if(v.max_uses!=null||v.reward_money!=null)p.push('usos '+(v.max_uses==null?'∞':v.max_uses));
+    if(v.money!=null&&v.reward_money==null)p.push('$ '+fmt(+v.money)+' · '+fmt(+v.gold||0)+' gold');return esc(v.code)+(p.length?' ('+p.join(', ')+')':'');}return esc(JSON.stringify(v));}
+function drawAud(){g('aoUl').innerHTML=AU.rows.map(r=>'<div class="au"><div class="d">'+when(r.created_at)+'</div><b>'+esc(r.admin_name||'?')+'</b> → '+esc(r.target_name||'(código)')+'<br>'+esc(ACT[r.action]||r.action)+': '+auVal(r,r.before_value)+' → '+auVal(r,r.after_value)+(r.reason?'<br><i style="opacity:.75">Motivo: '+esc(r.reason)+'</i>':'')+'</div>').join('')||'<div class="mt">Nenhuma alteração registrada.</div>';
+  g('aoUm').textContent='Mostrando '+AU.rows.length+' de '+AU.total;g('aoUmore').style.display=AU.rows.length<AU.total?'block':'none';}
+async function loadAud(reset){if(AU.loading)return;AU.loading=true;if(reset){AU.rows=[];AU.total=0;}
+  try{const d=await rpc('admin_audit_list',{p_limit:50,p_offset:AU.rows.length,p_search:AU.q.trim()||null});AU.total=d.total;AU.rows=AU.rows.concat(d.rows);drawAud();}catch(e){g('aoUl').innerHTML='<div class="mt" style="color:#ff9b9b">'+esc(errMsg(e))+'</div>';}AU.loading=false;}
+let uT=0;g('aoUq').addEventListener('input',e=>{AU.q=e.target.value;clearTimeout(uT);uT=setTimeout(()=>loadAud(true),350);});g('aoUmore').onclick=()=>loadAud(false);
+
+/* ---- GERENCIAR CÓDIGOS: editar, excluir, remover resgates ---- */
+const _card=card;card=function(r){return _card(r).replace('<button class="btn" data-a="us">👤 QUEM USOU</button>','<button class="btn" data-a="us">👤 QUEM USOU</button><button class="btn" data-a="rv">↩ RESGATES</button><button class="btn" data-a="ed">✏️ EDITAR</button><button class="btn dg" data-a="dl">🗑 EXCLUIR</button>');};
+g('aoList').addEventListener('click',async e=>{const b=e.target.closest('[data-a]');if(!b||!['ed','dl','rv'].includes(b.dataset.a))return;const el=b.closest('.cd'),id=+el.dataset.id,row=A.rows.find(r=>r.id===id);if(!row)return;
+  if(b.dataset.a==='dl'){const o=await confirmSheet('⚠ Excluir código',['Código: <b>'+esc(row.code)+'</b>','Utilizações: <b>'+row.used_count+(row.max_uses?'/'+row.max_uses:'')+'</b>','O código e o registro de quem o resgatou serão apagados. O que já foi entregue aos jogadores continua com eles.'],true,'EXCLUIR');
+    if(!o.ok)return;try{await rpc('admin_delete_code',{p_code_id:id,p_reason:null,p_confirm:true});toast('Código excluído');stats();load(true);}catch(x){toast(errMsg(x));}return;}
+  if(b.dataset.a==='ed'){const cat=row.category;let f='';
+    if(cat==='money'||cat==='xmas')f+='<label>Dinheiro por resgate</label><input id="e_m" inputmode="numeric" value="'+row.reward_money+'">';
+    if(cat==='gold')f+='<label>Gold por resgate</label><input id="e_g" inputmode="numeric" value="'+row.reward_gold+'">';
+    if(cat==='influencer'||cat==='xmas')f+='<label>Carro</label><select id="e_c">'+EXC.map(x=>'<option value="'+x.id+'"'+(x.id===row.car_id?' selected':'')+'>'+esc(x.n)+'</option>').join('')+'</select>';
+    f+='<label>Limite de usos (vazio = ilimitado)</label><input id="e_u" inputmode="numeric" value="'+(row.max_uses==null?'':row.max_uses)+'">';
+    const o=await sheet('<h3>✏️ Editar '+esc(row.code)+'</h3><div class="ln" style="opacity:.75">Só vale para resgates futuros. Quem já resgatou não é alterado.</div>'+f+'<div class="row2"><button class="btn" data-r="no">CANCELAR</button><button class="btn go" data-r="ok">SALVAR</button></div>');
+    if(!o.ok)return;const ch={};const v=o.vals;
+    if(v.e_m!=null&&num(v.e_m)!==row.reward_money)ch.reward_money=num(v.e_m);if(v.e_g!=null&&num(v.e_g)!==row.reward_gold)ch.reward_gold=num(v.e_g);
+    if(v.e_c!=null&&v.e_c!==row.car_id)ch.car_id=v.e_c;const nu=String(v.e_u).trim()===''?null:num(v.e_u);if(nu!==row.max_uses)ch.max_uses=nu;
+    if(!Object.keys(ch).length){toast('Nada foi alterado');return;}
+    try{await rpc('admin_edit_code',{p_code_id:id,p_changes:ch,p_reason:null});toast('Código atualizado');stats();load(true);}catch(x){toast(errMsg(x));}return;}
+  if(b.dataset.a==='rv'){let u;try{u=await rpc('admin_code_usage',{p_code_id:id});}catch(x){toast(errMsg(x));return;}
+    if(!u.length){toast('Ninguém resgatou este código ainda');return;}
+    const o=await sheet('<h3>↩ Resgates de '+esc(row.code)+'</h3><div class="ln">Escolha a conta:</div><label>Conta</label><select id="r_u">'+u.map(x=>'<option value="'+x.user_id+'">'+esc(x.username)+' · '+when(x.at)+'</option>').join('')+'</select>'+
+      '<div class="chk"><input type="checkbox" id="r_t"><label for="r_t" style="margin:0;text-transform:none;letter-spacing:0;opacity:1">Retirar também as recompensas</label></div><div class="row2"><button class="btn" data-r="no">CANCELAR</button><button class="btn dg" data-r="ok">REMOVER RESGATE</button></div>');
+    if(!o.ok)return;try{await rpc('admin_revoke_redemption',{p_code_id:id,p_user:o.vals.r_u,p_take_back:!!o.vals.r_t,p_reason:null,p_confirm:true});toast('Resgate removido');stats();load(true);}catch(x){toast(errMsg(x));}}});
+})();
+
 function openAdm(){if(!(me&&me.is_admin&&me.admin_unlocked))return;releaseAll();adm.classList.add('on');chips();stats();load(true);}
 bA.onclick=openAdm;g('aoX').onclick=()=>adm.classList.remove('on');
 refresh();
