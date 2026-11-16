@@ -1,9 +1,8 @@
 /* ASPHALT OUTLAWS — Cloudflare Worker + Durable Object
- *  /        → index.html (o jogo)
  *  /ws      → WebSocket do multiplayer (todas as salas vivem no Durable Object "GameHub")
  *  /health  → status JSON
+ *  demais   → arquivos estáticos da pasta public/ (index.html, sw.js, version.json, manifest, ícones)
  * Segredo necessário (NÃO vai no código): SUPABASE_SERVICE_KEY  (Settings > Variables and Secrets). */
-import INDEX_HTML from './index.html';
 import { createHub } from './hub.js';
 
 export class GameHub {
@@ -40,9 +39,6 @@ export default {
       const stub = env.GAME_HUB.get(env.GAME_HUB.idFromName('main'));
       return stub.fetch(request);
     }
-    if (url.pathname === '/' || url.pathname === '/index.html') {
-      return new Response(INDEX_HTML, { headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache', 'X-Content-Type-Options': 'nosniff' } });
-    }
-    return new Response('Não encontrado', { status: 404 });
+    return env.ASSETS.fetch(request);                                     /* jogo, sw.js, version.json, manifest, ícones */
   }
 };

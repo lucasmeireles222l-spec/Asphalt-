@@ -2,11 +2,10 @@ name = "asphalt-outlaws"
 main = "worker.js"
 compatibility_date = "2025-06-01"
 
-# Importa o index.html como texto dentro do Worker (um único deploy publica jogo + multiplayer)
-[[rules]]
-type = "Text"
-globs = ["**/*.html"]
-fallthrough = true
+# Arquivos do jogo (pasta public/): index.html, sw.js, version.json, manifest, ícones, _headers
+[assets]
+directory = "./public"
+binding = "ASSETS"
 
 # Durable Object: guarda todas as salas/jogadores em tempo real
 [[durable_objects.bindings]]
