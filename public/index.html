@@ -825,6 +825,7 @@ let illegal=false,trans=S.trans|0,mgr=1,polOn=false,catchT=0,topKmh=0,gcap=1e9;
 let CUR=null;const RC=()=>illegal?CLD[tier]:(CUR?CUR.rc:TIERS[tier]);
 const RANKS=[[0,'Novato','#9aa3b2','⚪'],[150,'Pé-de-chumbo','#cd7f32','🥉'],[500,'Piloto de Rua','#c0c8d4','🥈'],[1200,'Lenda da Noite','#ffd23a','🥇'],[3000,'Rei do Asfalto','#ff4fa0','👑']];
 const rkI=()=>{let n=0;RANKS.forEach((r,i)=>{if((S.rep||0)>=r[0])n=i;});return n;},rk=()=>RANKS[rkI()],rankName=()=>rk()[1];
+const isAdminAcc=()=>{try{return !!(me&&me.is_admin);}catch(e){return false;}},rkShow=()=>isAdminAcc()?['','👑 Administrador','#ffd23a','👑']:rk();
 /* nível e XP */
 if(S.xp==null)S.xp=(S.stats.races||0)*150;
 const MAXLV=1000,XPA=L=>L<=51?100*(L-1)*(L-1):250000+(L-51)*4000,lvl=()=>{const x=S.xp||0;return x<250000?1+Math.floor(Math.sqrt(x/100)):Math.min(MAXLV,51+Math.floor((x-250000)/4000));},MAPLV=[1,3,5,2,7,10];
@@ -928,7 +929,7 @@ function drawGPS(){mm2.style.display='block';const c=m2x,cc=CIR[RC().cir],Pp=cc.
 const rivals=[0,1,2].map(i=>{const m=makeCar([0x2f6fff,0xf5c400,0x22c55e][i],CARS[(i*3+2)%10],{rim:i+1,spoil:2,hi:1});m.visible=false;scene.add(m);return {m,sp:0,b0:50+i*3,base:50+i*3};});
 function showMenu(keep){document.body.classList.remove('results');BEND.set(0,0);hideMaps();paused=keep===true;if(!paused){rivals.forEach(r=>{r.m.visible=false;});PL.forEach(p=>{p.m.visible=false;});lineG.visible=false;polOn=false;}releaseAll();running=false;$('hb').style.display='none';document.body.classList.remove('racing');msgEl.textContent='';
   $('res').style.display='none';$('rsel').style.display='none';$('menu').style.display='flex';$('ov').style.display='flex';
-  $('mi').innerHTML='<span class="lbl">Seu carro</span><br><b style="font-size:20px">'+CARS[S.sel].n+'</b><br><span style="color:#7dffb0;font-weight:700">$ '+fmt(Math.floor(S.money))+'</span><br><span class="lbl">'+S.stats.wins+' vitórias · '+S.stats.races+' corridas</span><br><b style="color:'+rk()[2]+'">'+rk()[3]+' '+rk()[1]+'</b> · Nível '+lvl()+'<div class="bar" style="margin:4px 0 0"><i style="width:'+xpPct()+'%;background:#22d3ee"></i></div><span class="lbl">'+xpInfo()+'</span>';$('rs').style.display=paused?'block':'none';save();}
+  $('mi').innerHTML='<span class="lbl">Seu carro</span><br><b style="font-size:20px">'+CARS[S.sel].n+'</b><br><span style="color:#7dffb0;font-weight:700">$ '+fmt(Math.floor(S.money))+'</span><br><span class="lbl">'+S.stats.wins+' vitórias · '+S.stats.races+' corridas</span><br><b style="color:'+rkShow()[2]+'">'+(isAdminAcc()?'':rkShow()[3]+' ')+rkShow()[1]+'</b> · Nível '+lvl()+'<div class="bar" style="margin:4px 0 0"><i style="width:'+xpPct()+'%;background:#22d3ee"></i></div><span class="lbl">'+xpInfo()+'</span>';$('rs').style.display=paused?'block':'none';save();}
 function startMode(m){document.body.classList.remove('results');BEND.set(0,0);mgr=1;releaseAll();initAudio();paused=false;const _pmode=mode;if(_pmode==='free'&&m!=='free')freeDist=dist;mode=m;if(m==='race')dist=0;else if(m==='free'&&_pmode!=='free')dist=freeDist;fin=false;$('ov').style.display='none';$('hb').style.display='block';document.body.classList.add('racing');
   speed=0;steer=0;x=0;vx=0;sy=0;svy=0;nit=100;hd=0;ch=0;camReady=false;gnLast=0;player.rotation.y=0;cd=0;msgEl.textContent='';
   cityG.visible=m=='free'; chunks.forEach((c,i)=>{c.visible=m!='free';if(m!='free')c.position.z=z+CL-i*CL;});
@@ -947,7 +948,7 @@ function finish(rank,bust){releaseAll();hideMaps();running=false;polOn=false;PL.
   tx+='<div class="rx">'+award(rank,bust).replace(/^<br>/,'')+'</div>';save();$('rtitle').textContent=h;$('rtitle').className=bust?'rb':rank==1?'':'rn';document.body.classList.add('results');$('rtxt').innerHTML=tx;msgEl.textContent='';$('hb').style.display='none';document.body.classList.remove('racing');
   $('menu').style.display='none';$('res').style.display='flex';$('ov').style.display='flex';}
 $('go').onclick=()=>startMode('free'); const openRS=v=>{illegal=v;$('menu').style.display='none';$('rsel').style.display='flex';renderRS();};
-function renderRS(){const A=illegal?CLD:TIERS,ik=illegal?'i':'';$('rtiers').innerHTML='<div class="lbl">Nível '+lvl()+' · '+xpInfo()+'</div>'+(illegal?'<div class="lbl">🚨 '+rankName()+' · Reputação '+(S.rep|0)+'</div>':'')+A.map((t,i)=>'<button data-t="'+i+'"'+(lvl()<MAPLV[t.cir]?' style="opacity:.5"':'')+'><b>'+(lvl()<MAPLV[t.cir]?'🔒 ':'')+t.n+'</b> · '+t.d/1000+' km · '+CIR[t.cir].n+(lvl()<MAPLV[t.cir]?' · NÍVEL '+MAPLV[t.cir]+' necessário':'')+'<br><span class="lbl">'+(illegal?'🚨'+'★'.repeat(t.pol)+' · Multa $ '+fmt(t.fine)+' · ':'')+'Prêmio até $ '+fmt(PRIZE[0]*t.m)+(S.best[ik+i]?' · Recorde '+S.best[ik+i].toFixed(1)+'s':'')+'</span></button>').join('');}
+function renderRS(){const A=illegal?CLD:TIERS,ik=illegal?'i':'';$('rtiers').innerHTML='<div class="lbl">Nível '+lvl()+' · '+xpInfo()+'</div>'+(illegal?'<div class="lbl">🚨 '+(isAdminAcc()?rkShow()[1]:rankName())+' · Reputação '+(S.rep|0)+'</div>':'')+A.map((t,i)=>'<button data-t="'+i+'"'+(lvl()<MAPLV[t.cir]?' style="opacity:.5"':'')+'><b>'+(lvl()<MAPLV[t.cir]?'🔒 ':'')+t.n+'</b> · '+t.d/1000+' km · '+CIR[t.cir].n+(lvl()<MAPLV[t.cir]?' · NÍVEL '+MAPLV[t.cir]+' necessário':'')+'<br><span class="lbl">'+(illegal?'🚨'+'★'.repeat(t.pol)+' · Multa $ '+fmt(t.fine)+' · ':'')+'Prêmio até $ '+fmt(PRIZE[0]*t.m)+(S.best[ik+i]?' · Recorde '+S.best[ik+i].toFixed(1)+'s':'')+'</span></button>').join('');}
 //GEN_START
 function mb32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
 const ENVS=[['Centro Urbano',0x22d3ee,1.0,0x9bc5df,0,['Avenida Central','Rua do Comércio','Praça Maior','Largo da Estação','Viaduto Norte','Via Expressa']],
@@ -2797,6 +2798,109 @@ navigator.serviceWorker.register('/sw.js',{updateViaCache:'none'}).then(r=>{reg=
  setInterval(()=>r.update().catch(()=>{}),30*60*1000);
  document.addEventListener('visibilitychange',()=>{if(!document.hidden)r.update().catch(()=>{});});
 }).catch(()=>{});
+})();
+</script>
+<script>
+/* ===== PERFIS PERSONALIZÁVEIS — módulo aditivo (usa só RPCs pf_* com a sessão do jogador; nada de chave secreta) ===== */
+(function(){
+'use strict';
+const A=window.__ao2;if(!A||!A.rpc)return;
+const $=id=>document.getElementById(id),rpc=A.rpc;
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const logged=()=>{try{return !!A.state().me;}catch(e){return false;}};
+const isAdm=()=>{try{const m=A.state().me;return !!(m&&m.is_admin&&m.admin_unlocked);}catch(e){return false;}};
+const BN={free_b1:['Asfalto Noturno','linear-gradient(120deg,#0b1020,#1d2a5a)'],free_b2:['Pôr do Sol','linear-gradient(120deg,#ff7a1a,#7a1fa2)'],free_b3:['Neon City','linear-gradient(120deg,#0e7490,#be185d)']};
+const FR={free_f1:['Simples','#4b5563'],free_f2:['Ouro','#ffd23a'],free_f3:['Neon','#22d3ee']};
+const TT={free_t1:'Novato de Rua',free_t2:'Piloto Noturno',free_t3:'Caçador de Drift'};
+const BD={free_e1:['🏁','Primeira Corrida'],free_e2:['🔥','Pé na Tábua'],free_e3:['🏆','Campeão de Rua']};
+const AV=['🏎','🚗','🏁','🔥','⚡','👑','💀','🦅','🐺','🐉','🎯','🌙'];
+const lvOf=x=>x<250000?1+Math.floor(Math.sqrt(x/100)):Math.min(1000,51+Math.floor((x-250000)/4000));
+const fmt=n=>Number(n||0).toLocaleString('pt-BR');
+const st=document.createElement('style');st.textContent=`
+#pfm{position:fixed;inset:0;z-index:125;display:none;align-items:center;justify-content:center;padding:calc(env(safe-area-inset-top,0px)+10px) 10px calc(env(safe-area-inset-bottom,0px)+10px);background:rgba(5,8,18,.9);backdrop-filter:blur(8px);color:#fff;font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
+#pfm.on{display:flex}#pfm .c{position:relative;width:min(520px,100%);max-height:100%;overflow:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;background:linear-gradient(180deg,#171d33,#0d1122);border:1px solid #34406a;border-radius:22px;box-shadow:0 20px 60px #000c;animation:pfin .3s cubic-bezier(.2,1.2,.4,1)}
+@keyframes pfin{from{transform:translateY(22px) scale(.96);opacity:0}to{transform:none;opacity:1}}
+#pfm .x{position:absolute;top:10px;right:10px;width:38px;height:38px;border:0;border-radius:50%;background:rgba(0,0,0,.5);color:#fff;font-size:18px;z-index:3}
+#pfm .bn{height:110px;border-radius:22px 22px 0 0}#pfm .hd{display:flex;gap:12px;align-items:flex-end;padding:0 16px;margin-top:-38px;position:relative}
+#pfm .av{flex:none;width:80px;height:80px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:42px;background:#0a0e1c;border:4px solid var(--fc,#4b5563);box-shadow:0 0 18px var(--fc,#4b5563)}
+#pfm .nm{min-width:0;padding-bottom:4px}#pfm .nm h2{margin:0;font-size:21px;font-style:italic;overflow-wrap:anywhere;text-shadow:none}#pfm .nm small{opacity:.75;font-size:12px}
+#pfm .bd{padding:12px 16px 16px}#pfm .pill{display:inline-block;padding:3px 10px;border-radius:99px;background:var(--pc,#22d3ee);color:#04210f;font-weight:900;font-size:11px;letter-spacing:.05em;margin:2px 4px 2px 0}
+#pfm .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px;background:#6b7280}#pfm .dot.on{background:#22c55e;box-shadow:0 0 8px #22c55e}
+#pfm .bio{font-size:13px;line-height:1.5;opacity:.9;margin:8px 0;overflow-wrap:anywhere}
+#pfm .g{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:6px;margin:10px 0}#pfm .g div{background:rgba(255,255,255,.06);border-radius:12px;padding:8px 4px;text-align:center}
+#pfm .g b{display:block;font-size:17px}#pfm .g span,#pfm label{font-size:10px;letter-spacing:.08em;text-transform:uppercase;opacity:.65}#pfm label{display:block;margin:12px 0 4px}
+#pfm .row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}#pfm .row>button{flex:1 1 130px}
+#pfm button.b{padding:12px;border:0;border-radius:12px;background:rgba(255,255,255,.14);color:#fff;font-weight:800;font-size:13px;letter-spacing:.04em;margin:0}
+#pfm button.b.go{background:#2563eb}#pfm button.b.rd{background:#991b1b}#pfm button.b:disabled{opacity:.45}
+#pfm input,#pfm textarea,#pfm select{width:100%;box-sizing:border-box;padding:11px 12px;border-radius:10px;border:1px solid #39466f;background:#0a0e1c;color:#fff;font:inherit;font-size:16px;outline:0;user-select:text;-webkit-user-select:text}
+#pfm .ch{display:flex;gap:6px;flex-wrap:wrap}#pfm .ch button{padding:8px 11px;border-radius:10px;border:1px solid #39466f;background:#10162b;color:#fff;font-size:13px;font-weight:700}
+#pfm .ch button.on{border-color:var(--pc,#22d3ee);background:#16305a}#pfm .ch button:disabled{opacity:.4}
+#pfm .msg{min-height:20px;text-align:center;font-size:13px;font-weight:700;margin-top:8px}#pfm .msg.e{color:#ff8a8a}#pfm .msg.o{color:#7dffb0}
+#pfm.fire .bn{filter:saturate(1.4) hue-rotate(-20deg)}#pfm.chrome .c{border-color:#cbd5e1}#pfm.carbon .c{background:repeating-linear-gradient(45deg,#12151f 0 6px,#0d1018 6px 12px)}
+#pfm .rw{display:flex;gap:8px;align-items:center;padding:8px;border-radius:10px;background:rgba(255,255,255,.05);margin:4px 0;font-size:12px}#pfm .rw span{flex:1;overflow-wrap:anywhere}
+#aoPf{background:rgba(124,58,237,.55)}`;document.head.appendChild(st);
+const root=document.createElement('div');root.id='pfm';root.innerHTML='<div class="c"><button class="x" id="pfX" aria-label="Fechar">✕</button><div id="pfB"></div></div>';document.body.appendChild(root);
+['keydown','keyup','keypress','contextmenu'].forEach(n=>root.addEventListener(n,e=>e.stopPropagation()));
+const B=()=>$('pfB');let P=null,tmr=0,view='card';
+const close=()=>{root.classList.remove('on');clearTimeout(tmr);};$('pfX').onclick=close;root.addEventListener('click',e=>{if(e.target===root)close();});
+const eM=e=>{const m=String((e&&e.message)||e||'');return /could not find the function|schema cache/i.test(m)?'Perfis ainda não instalados no servidor (rode o perfis.sql).':/failed to fetch|networkerror/i.test(m)?'Sem conexão com o servidor.':m||'Erro inesperado.';};
+const say=(t,k)=>{const m=$('pfMsg');if(m){m.className='msg'+(k?' '+k:'');m.textContent=t||'';}};
+const bnS=id=>(BN[id]?BN[id][1]:'linear-gradient(120deg,#1e293b,'+hue(id)+')'),hue=id=>{let h=0;for(const c of String(id))h=(h*31+c.charCodeAt(0))%360;return 'hsl('+h+',70%,45%)';};
+const frC=id=>FR[id]?FR[id][1]:hue(id);
+const items=(k)=>((P&&P.items)||[]).filter(i=>i.kind===k);
+const tName=id=>TT[id]||(((P&&P.items)||[]).find(i=>i.id===id)||{}).name||id;
+function open(u){if(!logged()){try{A.openCd();}catch(e){}return;}try{A.releaseAll&&A.releaseAll();}catch(e){}root.classList.add('on');view='card';load(u);}
+async function load(u){B().innerHTML='<div style="padding:30px;text-align:center;opacity:.7">Carregando…</div>';
+  try{P=await rpc('pf_get',{p_user:u||null});draw();}catch(e){B().innerHTML='<div class="bd"><div class="msg e" id="pfMsg">'+esc(eM(e))+'</div></div>';}}
+function badgeHTML(P){const L=(P.badges||[]);return L.length?L.map(id=>{const b=BD[id]||[((P.items||[]).find(i=>i.id===id)||{}).emoji||'🏅',((P.items||[]).find(i=>i.id===id)||{}).name||id];return '<span class="pill" style="background:#ffffff22;color:#fff">'+esc(b[0])+' '+esc(b[1])+'</span>';}).join(''):'<span style="opacity:.6;font-size:12px">Nenhum emblema equipado</span>';}
+function draw(){root.className='on '+(P.style||'neon');root.style.setProperty('--pc',P.color);
+  const s=P.stats||{},races=+s.races||0,wins=+s.wins||0,lv=lvOf(+P.xp||0);
+  let h='<div class="bn" style="background:'+bnS(P.banner)+'"></div><div class="hd"><div class="av" style="--fc:'+frC(P.frame)+'">'+esc(P.avatar)+'</div><div class="nm"><h2>'+esc(P.display_name)+'</h2><small><span class="dot'+(P.online?' on':'')+'"></span>'+(P.online?'online':'offline')+' · @'+esc(P.username)+'</small></div></div><div class="bd">';
+  h+='<span class="pill">'+esc(tName(P.title))+'</span>'+(P.job?'<span class="pill" style="background:#ffd23a">'+esc(P.job)+'</span>':'');
+  h+='<div class="bio">'+(P.bio?esc(P.bio):'<i style="opacity:.5">Sem biografia.</i>')+'</div><div class="g"><div><b>'+lv+'</b><span>nível</span></div><div><b>🪙 '+fmt(P.gold)+'</b><span>gold</span></div><div><b>'+fmt(P.cars)+'</b><span>carros</span></div><div><b id="pfRk">—</b><span>ranking</span></div><div><b>'+races+'</b><span>corridas</span></div><div><b>'+wins+'</b><span>vitórias</span></div><div><b>'+Math.max(0,races-wins)+'</b><span>derrotas</span></div><div><b>'+(races?Math.round(wins/races*100)+'%':'—')+'</b><span>aproveit.</span></div></div>';
+  h+='<label>Carro favorito</label><div>'+(P.fav_car?'🚘 '+esc(P.fav_car):'<span style="opacity:.6">—</span>')+'</div><label>Emblemas e conquistas</label><div>'+badgeHTML(P)+'</div><label>Entrou em</label><div>'+(P.joined?new Date(P.joined).toLocaleDateString('pt-BR'):'—')+'</div><div class="msg" id="pfMsg"></div><div class="row">';
+  if(P.self)h+='<button class="b go" id="pfEd">✏ PERSONALIZAR PERFIL</button>'+(isAdm()?'<button class="b" id="pfAd">🛠 ADM PERFIS</button>':'');
+  else h+=(P.blocked?'':P.friend==='none'?'<button class="b go" id="pfFa">➕ CONVITE DE AMIZADE</button>':P.friend==='sent'?'<button class="b" id="pfFc">⏳ CONVITE ENVIADO (cancelar)</button>':P.friend==='received'?'<button class="b go" id="pfFo">✔ ACEITAR AMIZADE</button>':'<button class="b" id="pfFr">👥 AMIGOS (remover)</button>')+'<button class="b" id="pfBl">'+(P.blocked?'✅ DESBLOQUEAR':'🚫 BLOQUEAR')+'</button><button class="b rd" id="pfRp">🚩 DENUNCIAR</button>';
+  B().innerHTML=h+'</div></div>';
+  const on=(i,f)=>{const e=$(i);if(e)e.onclick=f;};on('pfEd',edit);on('pfAd',adm);
+  const fr=a=>async()=>{try{await rpc('pf_friend',{p_user:P.username,p_action:a});await load(P.username);}catch(e){say(eM(e),'e');}};
+  on('pfFa',fr('add'));on('pfFc',fr('cancel'));on('pfFo',fr('accept'));on('pfFr',()=>{if(confirm('Remover dos amigos?'))fr('remove')();});
+  on('pfBl',async()=>{if(!P.blocked&&!confirm('Bloquear '+P.username+'?'))return;try{await rpc('pf_block',{p_user:P.username,p_on:!P.blocked});await load(P.username);}catch(e){say(eM(e),'e');}});
+  on('pfRp',async()=>{const r=prompt('Motivo da denúncia (mín. 5 letras):');if(!r)return;try{await rpc('pf_report',{p_user:P.username,p_reason:r});say('🚩 Denúncia enviada.','o');}catch(e){say(eM(e),'e');}});
+  rank();}
+async function rank(){try{const L=await rpc('ranked_leaderboard',{p_season:null,p_division:null,p_limit:200}),r=L.find(x=>String(x.username).toLowerCase()===String(P.username).toLowerCase());if($('pfRk'))$('pfRk').textContent=r?'#'+r.pos:'—';}catch(e){}}
+/* ---- personalizar: salva sozinho (800 ms depois da última alteração) ---- */
+function edit(){view='edit';const sel=(arr,cur,k,lock)=>'<div class="ch" data-k="'+k+'">'+arr.map(a=>'<button data-v="'+esc(a[0])+'"'+(a[0]===cur?' class="on"':'')+'>'+esc(a[1])+'</button>').join('')+'</div>';
+  const bnL=Object.keys(BN).map(k=>[k,'🖼 '+BN[k][0]]).concat(items('banner').map(i=>[i.id,'🖼 '+i.name])),frL=Object.keys(FR).map(k=>[k,'🔲 '+FR[k][0]]).concat(items('frame').map(i=>[i.id,'🔲 '+i.name])),
+  ttL=Object.keys(TT).map(k=>[k,TT[k]]).concat(items('title').map(i=>[i.id,i.name])),bdL=Object.keys(BD).map(k=>[k,BD[k][0]+' '+BD[k][1]]).concat(items('badge').map(i=>[i.id,(i.emoji||'🏅')+' '+i.name]));
+  B().innerHTML='<div class="bd"><h2 style="margin:0 40px 6px 0;font-style:italic">✏ PERSONALIZAR PERFIL</h2><div class="msg" id="pfMsg">As alterações são salvas automaticamente.</div>'+
+  '<label>Nome de exibição</label><input id="pfN" maxlength="24" value="'+esc(P.display_name)+'"><label>Biografia</label><textarea id="pfBio" maxlength="160" rows="3">'+esc(P.bio)+'</textarea>'+
+  '<label>Avatar</label>'+sel(AV.map(a=>[a,a]),P.avatar,'avatar')+'<label>Banner de fundo</label>'+sel(bnL,P.banner,'banner')+'<label>Moldura do avatar</label>'+sel(frL,P.frame,'frame')+
+  '<label>Título equipado</label>'+sel(ttL,P.title,'title')+'<label>Cargo</label><input id="pfJob" maxlength="30" placeholder="ex.: Líder da equipe" value="'+esc(P.job)+'"><label>Carro favorito</label><input id="pfCar" maxlength="30" value="'+esc(P.fav_car)+'">'+
+  '<label>Cor do perfil</label><input id="pfCol" type="color" value="'+esc(P.color)+'" style="height:46px;padding:4px"><label>Estilo</label>'+sel([['neon','⚡ Neon'],['carbon','⬛ Carbono'],['chrome','🪞 Cromo'],['fire','🔥 Fogo']],P.style,'style')+
+  '<label>Emblemas (até 3)</label>'+sel(bdL,'','badge')+'<div class="row"><button class="b" id="pfBk">← VOLTAR AO PERFIL</button></div></div>';
+  const mark=()=>{B().querySelectorAll('[data-k="badge"] button').forEach(b=>b.classList.toggle('on',(P.badges||[]).includes(b.dataset.v)));};mark();
+  B().querySelectorAll('.ch').forEach(c=>c.onclick=e=>{const b=e.target.closest('button');if(!b)return;const k=c.dataset.k,v=b.dataset.v;
+    if(k==='badge'){const a=P.badges||[],i=a.indexOf(v);if(i>=0)a.splice(i,1);else if(a.length<3)a.push(v);else{say('Máximo de 3 emblemas.','e');return;}P.badges=a;mark();}
+    else{P[k]=v;c.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));}queue();});
+  [['pfN','display_name'],['pfBio','bio'],['pfJob','job'],['pfCar','fav_car'],['pfCol','color']].forEach(([i,k])=>$(i).oninput=e=>{P[k]=e.target.value;queue();});
+  $('pfBk').onclick=()=>{flush().then(()=>load());};}
+const queue=()=>{say('Salvando…');clearTimeout(tmr);tmr=setTimeout(flush,800);};
+async function flush(){clearTimeout(tmr);if(!P||!P.self)return;
+  try{await rpc('pf_save',{p:{display_name:P.display_name,bio:P.bio,avatar:P.avatar,banner:P.banner,frame:P.frame,title:P.title,job:P.job,fav_car:P.fav_car,color:P.color,style:P.style,badges:P.badges}});say('✔ Salvo','o');}catch(e){say(eM(e),'e');}}
+/* ---- ADM: conceder/remover itens + denúncias (o servidor confere o admin em cada chamada) ---- */
+async function adm(){if(!isAdm())return;B().innerHTML='<div class="bd"><h2 style="margin:0 40px 6px 0;font-style:italic">🛠 ADM · PERFIS</h2><div class="msg" id="pfMsg"></div><label>Jogador (usuário)</label><input id="aU" autocapitalize="off"><label>Tipo</label><select id="aK"><option value="banner">Banner</option><option value="frame">Moldura</option><option value="title">Título</option><option value="badge">Emblema</option></select><label>ID do item (ex.: vip_b1)</label><input id="aI" maxlength="40"><label>Nome</label><input id="aN" maxlength="40"><label>Emoji (emblema)</label><input id="aE" maxlength="4"><div class="row"><button class="b go" id="aG">CONCEDER</button><button class="b rd" id="aR">REMOVER</button><button class="b" id="aV">👁 VER PERFIL</button></div><label>Denúncias recentes</label><div id="aRp">Carregando…</div><div class="row"><button class="b" id="aBk">← VOLTAR</button></div></div>';
+  const go=on=>async()=>{try{await rpc('pf_admin_grant',{p_user:$('aU').value,p_item:$('aI').value.trim(),p_kind:$('aK').value,p_name:$('aN').value||$('aI').value,p_emoji:$('aE').value,p_on:on});say(on?'Item concedido.':'Item removido.','o');}catch(e){say(eM(e),'e');}};
+  $('aG').onclick=go(true);$('aR').onclick=go(false);$('aV').onclick=()=>{if($('aU').value.trim())load($('aU').value.trim());};$('aBk').onclick=()=>load();
+  try{const L=await rpc('pf_admin_reports');$('aRp').innerHTML=L.length?L.map(r=>'<div class="rw"><span><b>'+esc(r.target)+'</b> ← '+esc(r.reporter)+'<br>'+esc(r.reason)+'</span><button class="b" data-u="'+esc(r.target)+'">VER</button></div>').join(''):'<span style="opacity:.6">Nenhuma.</span>';
+    $('aRp').onclick=e=>{const b=e.target.closest('[data-u]');if(b)load(b.dataset.u);};}catch(e){$('aRp').textContent='';say(eM(e),'e');}}
+/* ---- botões no menu + clique em nome/avatar de jogadores (amigos, salas, ranking) ---- */
+const ms=$('msec');if(ms&&ms.parentNode){const b=document.createElement('button');b.id='aoPf';b.textContent='👤 MEU PERFIL';b.onclick=()=>open(null);
+  const b2=document.createElement('button');b2.id='aoPf2';b2.textContent='🔎 VER PERFIL DE JOGADOR';b2.style.background='rgba(124,58,237,.35)';b2.onclick=()=>{const n=prompt('Nome de usuário do jogador:');if(n&&n.trim())open(n.trim());};ms.before(b,b2);}
+document.addEventListener('click',e=>{const t=e.target.closest('#mp .pl .nm b, #rkm .rkrow .g b');if(!t||root.classList.contains('on'))return;
+  const n=(t.firstChild&&t.firstChild.nodeType===3?t.firstChild.textContent:t.textContent).replace(/^[^\w]+/,'').replace(/\s*\(você\)\s*$/,'').trim();if(n){e.stopPropagation();open(n);}},true);
+setInterval(()=>{if(logged()&&!document.hidden)rpc('pf_ping').catch(()=>{});},60000);setTimeout(()=>{if(logged())rpc('pf_ping').catch(()=>{});},4000);
+window.AO_PROFILE={open};
 })();
 </script>
 </body>
