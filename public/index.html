@@ -1839,21 +1839,22 @@ g('cdRedeem').onclick=async()=>{const code=g('cdCode').value.trim();if(!code){ms
   g('cdRedeem').disabled=true;msg('Verificando…');let r;
   try{r=await rpc('redeem_code',{p_code:code});}catch(e){msg(errMsg(e),'err');g('cdRedeem').disabled=false;return;}
   g('cdRedeem').disabled=false;
-  if(!r||!r.ok){msg(ERR[r&&r.error]||'Não foi possível resgatar.','err');try{blip(180,.2,'sawtooth',.07);}catch(e){}return;}
+  if(!r||!(r.ok||r.success)){msg((r&&(ERR[r.error]||r.message||r.error))||'Não foi possível resgatar.','err');try{blip(180,.2,'sawtooth',.07);}catch(e){}return;}
   applyReward(r);g('cdCode').value='';msg('');showReward(r);};
 function applyReward(r){
   if(r.reward_money)S.money+=r.reward_money;
-  if(r.gold_balance!=null)S.gold=+r.gold_balance;
+  {const gb=r.gold_balance!=null?r.gold_balance:r.new_gold;if(gb!=null)S.gold=+gb;}
   if(r.car_id&&CIDX[r.car_id]!=null){const i=CIDX[r.car_id];if(!S.own.includes(i))S.own.push(i);seedCust();}
   if(r.category==='adm'&&me){me.admin_unlocked=true;syncAdmin();}
   save();push(true);refresh();view2();}
 async function syncAdmin(){if(!me)return;try{const s=await rpc('admin_status');me.is_admin=!!s.is_admin;me.admin_unlocked=!!s.admin_unlocked;}catch(e){}refresh();}
 function showReward(r){let big='🎁',t1='RECOMPENSA',t2='',t3='';
   if(r.category==='money'){big='💰';t1='DINHEIRO RECEBIDO';t2='+ $ '+fmt(r.reward_money);t3='Adicionado ao seu saldo.';}
-  else if(r.category==='gold'){big='🪙';t1='GOLD RECEBIDO';t2='+ '+fmt(r.reward_gold)+' GOLD';t3='Saldo de Gold: '+fmt(r.gold_balance);}
+  else if(r.category==='gold'){big='🪙';t1='GOLD RECEBIDO';t2='+ '+fmt(r.reward_gold)+' GOLD';t3='Saldo de Gold: '+fmt(r.gold_balance!=null?r.gold_balance:r.new_gold);}
   else if(r.category==='influencer'){big='🏎️';t1='CARRO EXCLUSIVO DESBLOQUEADO';t2=esc(r.car_name);t3='Já está na sua garagem!';}
   else if(r.category==='xmas'){big='🎄';t1='ESPECIAL DE NATAL';t2=esc(r.car_name);t3='Carro na garagem + $ '+fmt(r.reward_money)+' de presente!';}
   else if(r.category==='adm'){big='🛠️';t1='ACESSO ADMIN LIBERADO';t2='PAINEL DO CRIADOR';t3='Use o botão 🛠 PAINEL ADM no menu.';}
+  else{big='🎁';t1='CÓDIGO RESGATADO';t2=esc(r.message||'Recompensa recebida!');t3='';}
   let sp='';for(let i=0;i<14;i++){const a=i/14*6.283,d=90+Math.random()*80;sp+='<span class="spk" style="left:50%;top:38%;--dx:'+Math.cos(a)*d+'px;--dy:'+Math.sin(a)*d+'px;animation-delay:'+(Math.random()*.3)+'s">'+['✨','⭐','🎉','💫'][i%4]+'</span>';}
   const c=g('cdr');c.innerHTML=sp+'<div class="big">'+big+'</div><div class="t1">'+t1+'</div><div class="t2">'+t2+'</div><div class="t3">'+t3+'</div><button class="btn go" id="cdOk" style="padding:13px 40px">OK</button>';
   c.classList.add('on');g('cdOk').onclick=()=>{c.classList.remove('on');view2();};

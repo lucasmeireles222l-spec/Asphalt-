@@ -1,8 +1,9 @@
 {
-  "version": "2026.11.17-1",
-  "hash": "cff66322e4957510",
+  "version": "2026.11.17-2",
+  "hash": "ab26095eccb0d533",
   "date": "2026-11-17",
   "notes": [
+    "Correção: resgate de códigos agora mostra o resultado e atualiza o Gold",
     "Ranqueada: 7 divisões, pontos por corrida online e temporadas com recompensas",
     "Placar online com o ranking dos jogadores",
     "Multiplayer online: corridas em tempo real com 2 a 8 jogadores"
