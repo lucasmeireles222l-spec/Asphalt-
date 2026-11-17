@@ -242,6 +242,23 @@ function rankOrder(r) {
   const rest = r.racers.filter(x => !r.finOrder.includes(x.p)).sort((a, b) => (b.left ? b.prog : b.p.srv) - (a.left ? a.prog : a.p.srv));
   return fin.concat(rest);
 }
+/* ---- RANQUEADA: manda o resultado da corrida ao Supabase (ranked_apply_match). Nunca derruba a corrida: erros só vão pro log. ---- */
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+async function applyRanked(r, order, rows) {
+  try {
+    if (!HAVE_SB || rows.length < MINP) return;
+    if (order.some(x => !UUID_RE.test(String(x.p.id)))) return;                 /* contas de teste (dev-...) não pontuam */
+    const payload = {
+      match_id: 'ao-' + r.matchId, duration_ms: Math.max(0, Date.now() - r.startAt),
+      rows: order.map((x, i) => ({
+        user_id: x.p.id, rank: i + 1, finished: !!rows[i].fin, time_ms: rows[i].fin ? rows[i].time : null,
+        abandon: !rows[i].fin && x.left ? (x.why === 'desconectou' ? 'disconnect' : 'left') : null
+      }))
+    };
+    const out = await sbf('/rest/v1/rpc/ranked_apply_match', { method: 'POST', body: { p: payload } });
+    if (out && out.ok === false) log('ranked', JSON.stringify(out));
+  } catch (e) { log('ranked', e.message); }
+}
 function endRace(r, why) {
   if (r.state === 'finished') return;
   r.state = 'finished'; clearTimeout(r.startT);
@@ -259,6 +276,7 @@ function endRace(r, why) {
       else { row.money = 0; row.xp = 0; row.cap = true; }
     }
   });
+  applyRanked(r, order, rows);
   Promise.resolve().then(() => db.saveMatch({ match_id: r.matchId, room_code: r.code, track: r.cfg.track, laps: r.cfg.laps, players: n, results: rows.map(x => ({ rank: x.rank, name: x.name, time: x.time, fin: x.fin })) })).catch(e => log('saveMatch', e.message));
   db.saveRewards(rw).then(() => {
     r.players.forEach(p => send(p, { t: 'res', m: r.matchId, rows, why }));
