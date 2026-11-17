@@ -1804,7 +1804,7 @@ window.AO_awardGold=async(n,why)=>{n=Math.max(50,Math.min(150,Math.floor(+n)||0)
 document.addEventListener('visibilitychange',()=>{if(document.hidden)push(false);});addEventListener('pagehide',()=>{push(true);});
 function refresh(){try{build(S.sel);}catch(e){}
   if(!running&&!inGar&&!paused&&$('menu').style.display==='flex')showMenu();else deco();
-  const b=$('aoAdm');if(b)b.style.display=me&&me.is_admin&&me.admin_unlocked?'block':'none';}
+  const b=$('aoAdm');if(b)b.style.display=me&&me.is_admin?'block':'none';}
 async function auth(mode,user,pass,mail){const c=client();if(!c)throw new Error(problem());user=user.trim();
   if(mode==='up'){if(!/^[A-Za-z0-9_]{3,20}$/.test(user))throw new Error('Usuário: 3 a 20 letras, números ou _.');if(pass.length<6)throw new Error('Senha muito curta (mínimo 6 caracteres).');
     const r=await c.auth.signUp({email:(mail||'').trim()||emailFor(user),password:pass,options:{data:{username:user}}});if(r.error)throw r.error;if(!r.data.session)throw new Error('CONFIRM');}
@@ -2148,7 +2148,7 @@ g('aoList').addEventListener('click',async e=>{const b=e.target.closest('[data-a
     if(!o.ok)return;try{await rpc('admin_revoke_redemption',{p_code_id:id,p_user:o.vals.r_u,p_take_back:!!o.vals.r_t,p_reason:null,p_confirm:true});toast('Resgate removido');stats();load(true);}catch(x){toast(errMsg(x));}}});
 })();
 
-function openAdm(){if(!(me&&me.is_admin&&me.admin_unlocked))return;releaseAll();adm.classList.add('on');chips();stats();load(true);}
+function openAdm(){if(!(me&&me.is_admin))return;releaseAll();adm.classList.add('on');chips();stats();load(true);}
 bA.onclick=openAdm;g('aoX').onclick=()=>adm.classList.remove('on');
 refresh();
 window.__ao2={EXC,CIDX,isEx,state:()=>({me,ready}),openCd,openAdm,
@@ -2725,9 +2725,9 @@ function aoRkBox(txt){let o=document.getElementById('aoRkBox');if(o)o.remove();o
   const c=document.createElement('div');c.style.cssText='width:100%;max-width:380px;max-height:86vh;overflow:auto;padding:18px;border-radius:16px;background:linear-gradient(180deg,#161a34,#0a0c1a);border:1px solid rgba(255,59,59,.5);box-shadow:0 10px 40px rgba(255,59,59,.2);color:#fff;font:600 15px/1.5 system-ui,sans-serif;white-space:pre-wrap;text-align:left';
   c.textContent=txt;const b=document.createElement('button');b.textContent='FECHAR';b.style.cssText='display:block;width:100%;margin-top:14px;padding:13px;border:0;border-radius:12px;background:#ff3b3b;color:#fff;font:900 15px system-ui;letter-spacing:.1em';
   b.onclick=()=>o.remove();c.appendChild(b);o.appendChild(c);o.addEventListener('click',e=>{if(e.target===o)o.remove();});document.body.appendChild(o);}
-async function showRank(){let L=JSON.parse(ls('ao_drift_rank')||'[]'),on='';
-  try{const r=window.__ao2&&window.__ao2.rpc;if(r){const D=await Promise.race([r('drift_leaderboard',{p_limit:20}),new Promise((_,j)=>setTimeout(j,4000))]);if(D&&D.length){L=D.map(x=>({n:x.username,s:x.score}));on=' · ONLINE';}}}catch(e){}
-  aoRkBox('🏆 RANKING DRIFT'+on+'\n\n'+(L.length?L.slice(0,10).map((x,i)=>(i+1)+'º  '+x.n+'  —  '+pts(x.s)).join('\n'):'Sem pontuações ainda. Vá derrapar!')+(on?'':'\n\n(ranking local — ative o online com o drift_ranking.sql)'));}
+async function showRank(){let L=JSON.parse(ls('ao_drift_rank')||'[]'),on='',er='';
+  try{const r=window.__ao2&&window.__ao2.rpc;if(r){const D=await Promise.race([r('drift_leaderboard',{p_limit:20}),new Promise((_,j)=>setTimeout(j,4000))]);if(Array.isArray(D)){L=D.map(x=>({n:x.username,s:x.score}));on=' · ONLINE';}}}catch(e){er=e&&e.message?String(e.message):'sem resposta do servidor';}
+  aoRkBox('🏆 RANKING DRIFT'+on+'\n\n'+(L.length?L.slice(0,10).map((x,i)=>(i+1)+'º  '+x.n+'  —  '+pts(x.s)).join('\n'):'Sem pontuações ainda. Vá derrapar!')+(on?'':'\n\n(ranking local'+(er?' — erro: '+er:'')+' — ative o online com o drift_ranking.sql)'));}
 /* reta de velocidade máxima */
 function startTop(){const E=0;CUR={name:'Reta de Velocidade',env:E,kk:0,seg:[[1500,0,0]],d:1500,b:0,m:0,t:tier,gp:4,par:1,top:1};CIR[6]=matCir(CUR);CUR.rc={n:CUR.name,d:CUR.d,b:0,m:0,cir:6};illegal=false;
   $('rsel')&&($('rsel').style.display='none');startMode('race');rivals.forEach(r=>{r.m.visible=false;r.m.position.z=1e6;r.sp=0;});PL.forEach(p=>{p.m.visible=false;});topBest=+ls('ao_top_best')||0;}
