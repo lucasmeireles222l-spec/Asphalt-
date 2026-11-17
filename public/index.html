@@ -312,6 +312,14 @@ const CARS=[
 {n:'Cobra GT500',p:42000,top:72,acc:35,len:4.8,wid:2.1,h:.58,cab:.42,cl:1.4,cz:.6,nz:.22,rf:.2,ft:.2,fl:1},
 {n:'Raptor V12',p:95000,top:80,acc:41,len:4.7,wid:2.25,h:.46,cab:.36,cl:1.5,cz:.1,rf:1,ft:.2,fl:1},
 {n:'Zenith X',p:230000,top:88,acc:50,len:4.6,wid:2.3,h:.44,cab:.34,cl:1.3,cz:-.1,rf:1.1,ft:.22,fl:1,sc:1}];
+/* ---- Gold / preços de upgrade (3x mais caros; pagamento em dinheiro OU Gold) ---- */
+let payG=0;const UPM=3,gcost=m=>Math.ceil(m/60/5)*5;
+const upPrice=(b,L)=>{const m=b*UPM*(L+1);return payG?gcost(m):m;};
+const upCan=p=>payG?(S.gold|0)>=p:S.money>=p;
+const upLbl=p=>payG?'🪙 '+fmt(p):'$ '+fmt(p);
+const goldPay=(n,w)=>window.AO_spendGold?window.AO_spendGold(n,w):Promise.resolve(false);
+const goldGain=(n,w)=>window.AO_awardGold?window.AO_awardGold(n,w):Promise.resolve(false);
+async function upPay(p,w){if(payG)return goldPay(p,w);if(S.money<p)return false;S.money-=p;return true;}
 const RIMS=[{n:'Prata',c:0xcfd4dc},{n:'Preta',c:0x15171c},{n:'Ouro',c:0xd4a017},{n:'Neon',c:0x22d3ee},{n:'Bronze',c:0xb06a3a},{n:'Vermelha',c:0xd01818},{n:'Branca',c:0xf2f2f2}];
 const _gc={}, gcache=(k,f)=>_gc[k]||(_gc[k]=f());
 const SM={bk:new THREE.MeshLambertMaterial({color:0x080808}),cr:new THREE.MeshStandardMaterial({color:0xb8bcc4,metalness:1,roughness:.25}),
@@ -321,7 +329,7 @@ const SM={bk:new THREE.MeshLambertMaterial({color:0x080808}),cr:new THREE.MeshSt
  GLh:new THREE.MeshPhysicalMaterial({color:0x0a121c,metalness:.1,roughness:.05,transparent:true,opacity:.42,envMapIntensity:1.6,depthWrite:false}),
  it:new THREE.MeshLambertMaterial({color:0x15171c}),st:new THREE.MeshLambertMaterial({color:0x2b2e38})};
 function makeCar(color,spec,o){
-  spec=spec||CARS[Math.random()*CARS.length|0]; o=o||{};
+  spec=spec||(()=>{let c,n=0;do c=CARS[Math.random()*CARS.length|0];while((c.adm||c.gold)&&++n<50);return c;})(); o=o||{};
   const g=new THREE.Group(), L=spec.len, W=spec.wid, H=spec.h, U=gcache('U',()=>new THREE.BoxGeometry(1,1,1)), hi=!!o.hi, fin=o.fin|0;
   const pk=color+'|'+fin, PD=fin==1?{metalness:.25,roughness:.62,clearcoat:0,envMapIntensity:.9}:fin==2?{metalness:1,roughness:.1,clearcoat:1,clearcoatRoughness:0,envMapIntensity:2.4}:{metalness:.85,roughness:.22,clearcoat:1,clearcoatRoughness:.05,envMapIntensity:1.6};
   const P=_gc[pk]||(_gc[pk]=new THREE.MeshPhysicalMaterial(Object.assign({color:color},PD))), GL=hi?SM.GLh:SM.GL, bk=SM.bk, cr=SM.cr;
@@ -773,8 +781,8 @@ function build(i){const c=cu(i);buildPlayer(parseInt(c.c.slice(1),16),CARS[i],{r
 function bar(l,v,t){return '<div class="lbl">'+l+' · '+t+'</div><div class="bar"><i style="width:'+Math.round(v*100)+'%"></i></div>';}
 function renderUI(){
   const sp=CARS[view],c=cu(view),own=S.own.includes(view);
-  $('gm').textContent='$ '+fmt(Math.floor(S.money));
-  $('chips').innerHTML=CARS.map((q,i)=>'<button class="ch '+(i==view?'on2':'')+'" data-v="'+i+'">'+(i+1)+(S.own.includes(i)?'':'🔒')+'</button>').join('');
+  $('gm').textContent='$ '+fmt(Math.floor(S.money))+' · 🪙 '+fmt(S.gold|0);
+  $('chips').innerHTML=CARS.map((q,i)=>hid(i)?'':'<button class="ch '+(i==view?'on2':'')+'" data-v="'+i+'">'+(i+1)+(S.own.includes(i)?'':'🔒')+'</button>').join('');
   $('gn').innerHTML='<b>'+sp.n+'</b><br><span class="lbl">'+(own?'Na garagem':'À venda · $ '+fmt(sp.p))+'</span>';
   $('gs').innerHTML=((t,b)=>{const ba=(l,x,y,m,f)=>bar(l,Math.min(1,y/m),(Math.round(x)==Math.round(y)?'':f(x)+' → ')+f(y));const r=Math.round;
     return ba('Velocidade',b.top*3.6,t.top*3.6,340,v=>r(v)+' km/h')+ba('Aceleração',b.acc,t.acc,60,v=>r(v))+ba('Aderência',b.grip*100,t.grip*100,190,v=>r(v)+'%')+ba('Frenagem',b.brk,t.brk,80,v=>r(v))+bar('Peso',sp.len*sp.wid/12,r(sp.len*sp.wid*140)+' kg');})(tuned(view),tuned(view,1));
@@ -783,26 +791,27 @@ function renderUI(){
   $('spo').innerHTML=SPO.map((n,i)=>'<button class="pt '+(i==c.s?'on2':'')+'" data-s="'+i+'">'+n+'</button>').join('');
   const bt=(a,k2,v,cur)=>a.map((n,i)=>'<button class="pt '+(i==cur?'on2':'')+'" data-'+k2+'="'+i+'">'+n+'</button>').join('');
   $('fin').innerHTML=bt(FIN,'f',0,c.f|0);$('kit').innerHTML=bt(KIT,'kt',0,c.k|0);$('neo').innerHTML=bt(NEO,'n',0,c.n==null?1:c.n);
-  $('cc').value=c.c; $('tuneInfo').textContent='Motor nível '+(c.eng||0)+'/3 · Suspensão nível '+(c.sus||0)+'/2'; $('engineUp').textContent='⚙️ MOTOR + $ '+fmt(3500*((c.eng||0)+1)); $('engineUp').disabled=(c.eng||0)>=3||S.money<3500*((c.eng||0)+1); $('suspUp').textContent='🏎️ SUSPENSÃO + $ '+fmt(2200*((c.sus||0)+1)); $('suspUp').disabled=(c.sus||0)>=2||S.money<2200*((c.sus||0)+1);
+  $('cc').value=c.c; $('tuneInfo').textContent='Motor nível '+(c.eng||0)+'/3 · Suspensão nível '+(c.sus||0)+'/2'; {const pe=upPrice(3500,c.eng||0),ps=upPrice(2200,c.sus||0);$('engineUp').textContent='⚙️ MOTOR + '+upLbl(pe);$('engineUp').disabled=(c.eng||0)>=3||!upCan(pe);$('suspUp').textContent='🏎️ SUSPENSÃO + '+upLbl(ps);$('suspUp').disabled=(c.sus||0)>=2||!upCan(ps);}
   upgUI(c);
-  const b=$('gact'); b.textContent=own?'USAR ESTE CARRO':'COMPRAR $ '+fmt(sp.p); b.disabled=!own&&S.money<sp.p;custBar();
+  const b=$('gact'); b.textContent=own?'USAR ESTE CARRO':lvl()<carLv(view)?'🔒 NÍVEL '+carLv(view)+' · $ '+fmt(sp.p)+(sp.gold?' + 🪙 '+fmt(sp.gold):''):'COMPRAR $ '+fmt(sp.p)+(sp.gold?' + 🪙 '+fmt(sp.gold):''); b.disabled=!own&&(lvl()<carLv(view)||S.money<sp.p||(sp.gold&&(S.gold|0)<sp.gold));custBar();
 }
 function show(i){view=i;build(i);renderUI();selUI();}
-$('gpan').onclick=e=>{const t=e.target.closest('[data-c],[data-r],[data-s],[data-v],[data-f],[data-kt],[data-n],[data-u],[data-p],[data-tab],[data-pf]');if(!t)return;const d=t.dataset,c=cu(view);
+$('gpan').onclick=e=>{const t=e.target.closest('[data-c],[data-r],[data-s],[data-v],[data-f],[data-kt],[data-n],[data-u],[data-p],[data-tab],[data-pf],[data-pg]');if(!t)return;const d=t.dataset,c=cu(view);
   if(d.tab){$('tv').style.display=d.tab=='v'?'block':'none';$('tp').style.display=d.tab=='p'?'block':'none';document.querySelectorAll('[data-tab]').forEach(b=>b.classList.toggle('on2',b.dataset.tab==d.tab));return;}
   if(d.pf){const q=d.pf.split(':');c[q[0]]=+q[1];show(view);return;}
-  if(d.u){const u=UPG.find(q=>q[0]==d.u),L=c[d.u]||0,cost=u[2]*(L+1);if(L>=3||S.money<cost)return;S.money-=cost;c[d.u]=L+1;save();renderUI();const g=$('gn');g.classList.remove('pop');void g.offsetWidth;g.classList.add('pop');return;}
+  if(d.pg!=null){payG=payG?0:1;renderUI();return;}
+  if(d.u){const u=UPG.find(q=>q[0]==d.u),L=c[d.u]||0,p=upPrice(u[2],L);if(L>=3||!upCan(p))return;(async()=>{if(!(await upPay(p,'upg:'+d.u)))return;c[d.u]=L+1;save();renderUI();const g=$('gn');g.classList.remove('pop');void g.offsetWidth;g.classList.add('pop');})();return;}
   if(d.p){const key=view+'_'+d.p[1];if(d.p[0]=='s'){S.pre=S.pre||{};S.pre[key]=JSON.stringify({c:c.c,r:c.r|0,s:c.s|0,f:c.f|0,k:c.k|0,n:c.n==null?1:c.n,sk:c.sk|0,ho:c.ho|0,ex:c.ex|0,dc:c.dc|0,ht:c.ht|0});save();}else if(S.pre&&S.pre[key]){Object.assign(c,JSON.parse(S.pre[key]));}show(view);return;}
   if(d.v!=null){show(+d.v);return;}
   if(d.c)c.c=d.c; if(d.r!=null)c.r=+d.r; if(d.s!=null)c.s=+d.s; if(d.f!=null)c.f=+d.f; if(d.kt!=null)c.k=+d.kt; if(d.n!=null)c.n=+d.n; show(view);};
 $('cc').oninput=e=>{cu(view).c=e.target.value;build(view);};
-$('engineUp').onclick=()=>{const c=cu(view),cost=3500*((c.eng||0)+1);if((c.eng||0)>=3||S.money<cost)return;S.money-=cost;c.eng=(c.eng||0)+1;save();renderUI();};
-$('suspUp').onclick=()=>{const c=cu(view),cost=2200*((c.sus||0)+1);if((c.sus||0)>=2||S.money<cost)return;S.money-=cost;c.sus=(c.sus||0)+1;save();renderUI();};
-$('pv').onclick=()=>show((view+CARS.length-1)%CARS.length); $('nx').onclick=()=>show((view+1)%CARS.length);
+$('engineUp').onclick=async()=>{const c=cu(view),L=c.eng||0,p=upPrice(3500,L);if(L>=3||!upCan(p))return;if(!(await upPay(p,'upg:eng')))return;c.eng=L+1;save();renderUI();};
+$('suspUp').onclick=async()=>{const c=cu(view),L=c.sus||0,p=upPrice(2200,L);if(L>=2||!upCan(p))return;if(!(await upPay(p,'upg:sus')))return;c.sus=L+1;save();renderUI();};
+$('pv').onclick=()=>gstep(-1); $('nx').onclick=()=>gstep(1);
 function openGar(){releaseAll();paused=false;inGar=true;running=false;document.body.classList.remove('racing');$('ov').style.display='none';$('hb').style.display='none';$('gar').style.display='block';show(S.sel);}
 function closeGar(){inGar=false;$('gar').style.display='none';build(S.sel);showMenu();}
 $('gact').onclick=()=>{const sp=CARS[view];
-  if(!S.own.includes(view)){if(S.money<sp.p)return;S.money-=sp.p;S.own.push(view);save();renderUI();return;}
+  if(!S.own.includes(view)){buyCar(view).then(ok=>{if(ok)renderUI();});return;}
   S.sel=view;save();closeGar();};
 $('gb').onclick=()=>{if(!S.own.includes(S.sel))S.sel=0;closeGar(false);};
 $('gg').onclick=openGar; $('hb').onclick=()=>showMenu(true);
@@ -842,7 +851,7 @@ const UPG=[['tur','Turbo',2800],['brk','Freios',1800],['tir','Pneus',2000],['ecu
 function tuned(i,b){const sp=CARS[i],c=b?{}:cu(i),g=q=>c[q]||0,gr=1.8-sp.len*sp.wid/9*.75;
   return{top:sp.top*(1+g('eng')*.045+g('tur')*.02+g('ecu')*.015+g('exh')*.01+g('rad')*.012),acc:sp.acc*(1+g('eng')*.09+g('tur')*.06+g('ecu')*.04+g('exh')*.02+g('clu')*.03),grip:gr*(1+g('tir')*.07+g('sus')*.03),brk:(42+gr*14)*(1+g('brk')*.12)};}
 const ownd=(c,f,v)=>v==0||(c.own||[]).includes(f+':'+v);
-function upgUI(c){$('upg').innerHTML=UPG.map(u=>{const L=c[u[0]]||0,cost=u[2]*(L+1);return '<button class="pt" data-u="'+u[0]+'"'+(L>=3||S.money<cost?' disabled':'')+'>'+u[1]+' '+L+'/3'+(L<3?' · $ '+fmt(cost):' · MAX')+'</button>';}).join('');
+function upgUI(c){$('upg').innerHTML='<button class="pt on2" data-pg="1" style="width:100%">PAGAR COM: '+(payG?'🪙 GOLD':'💵 DINHEIRO')+' · toque para trocar</button>'+UPG.map(u=>{const L=c[u[0]]||0,p=upPrice(u[2],L);return '<button class="pt" data-u="'+u[0]+'"'+(L>=3||!upCan(p)?' disabled':'')+'>'+u[1]+' '+L+'/3'+(L<3?' · '+upLbl(p):' · MAX')+'</button>';}).join('');
   $('pfr').innerHTML=PF.map(p=>'<div class="lbl">'+p[2]+'</div><div class="row">'+p[3].map((n,i)=>'<button class="pt '+((c[p[0]]|0)==i?'on2':'')+'" data-pf="'+p[0]+':'+i+'">'+n+(ownd(c,p[0],i)?'':' · $'+fmt(p[4]*i))+'</button>').join('')+'</div>').join('');
   $('pre').innerHTML=[0,1,2].map(i=>'<button class="pt" data-p="s'+i+'">💾 '+(i+1)+'</button><button class="pt" data-p="l'+i+'"'+(S.pre&&S.pre[view+'_'+i]?'':' disabled')+'>📂 '+(i+1)+'</button>').join('');}
 /* qualidade gráfica */
@@ -944,6 +953,7 @@ function finish(rank,bust){releaseAll();hideMaps();running=false;polOn=false;PL.
     
     h=rank==1?'VITÓRIA!':rank+'º LUGAR';
     tx='<div class="rg"><div>POSIÇÃO<b>'+rank+'º / 4</b></div><div>TEMPO<b>'+Math.floor(rt/60)+':'+(rt%60<10?'0':'')+(rt%60).toFixed(1)+'</b></div><div>VEL. MÁX<b>'+Math.round(topKmh)+' km/h</b></div></div><div class="rw">+ $ '+fmt(pz)+'</div>';
+    const gd=[150,110,80,50][rank-1];tx+='<div class="rw" id="rgold" style="color:#ffd23a;text-shadow:none">+ 🪙 '+gd+' Gold</div>';goldGain(gd,'race').then(ok=>{const e=$('rgold');if(e&&!ok)e.textContent='🪙 Gold não creditado (sem conexão com o servidor)';});
     if(rank==1)confetti();}
   tx+='<div class="rx">'+award(rank,bust).replace(/^<br>/,'')+'</div>';save();$('rtitle').textContent=h;$('rtitle').className=bust?'rb':rank==1?'':'rn';document.body.classList.add('results');$('rtxt').innerHTML=tx;msgEl.textContent='';$('hb').style.display='none';document.body.classList.remove('racing');
   $('menu').style.display='none';$('res').style.display='flex';$('ov').style.display='flex';}
@@ -1046,7 +1056,11 @@ let selMode='race',custOpen=false,snap={},gLook=-.6,gdr=0,dgx=null;
 const PF=[['r','rm','Rodas',RIMS.map(x=>x.n),400],['s','spo','Aerofólio',SPO,500],['f','fin','Acabamento',FIN,300],['k','kit','Para-choques / Kit',KIT,900],['n','neo','Neon',NEO,350],
  ['sk','skr','Saias laterais',['Sem','Esportiva','Carbono'],450],['ho','hor','Capô',['Original','Entrada de ar','Fibra carbono'],600],['ex','exr','Escapamento',['Original','Duplo','Quádruplo','Lateral'],550],
  ['dc','dcr','Adesivos',['Sem','Branco','Preto','Amarelo'],250],['ht','htr','Altura',['Normal','Rebaixada','Rally'],400]];
-const carLv=i=>Math.min(12,1+Math.floor(CARS[i].p/20000));
+const carLv=i=>CARS[i].minLv||Math.min(12,1+Math.floor(CARS[i].p/20000));
+const hid=i=>{const c=CARS[i];return !!c&&((c.exid&&!S.own.includes(i))||(c.adm&&!isAdminAcc()));};
+const gstep=d=>{let i=view,n=0;do{i=(i+d+CARS.length)%CARS.length;n++;}while(hid(i)&&n<CARS.length);show(i);};
+async function buyCar(i){const sp=CARS[i];if(!sp||S.own.includes(i)||hid(i))return false;if(lvl()<carLv(i)||S.money<sp.p||(sp.gold&&(S.gold|0)<sp.gold))return false;
+  if(sp.gold&&!(await goldPay(sp.gold,'car:'+sp.n)))return false;S.money-=sp.p;S.own.push(i);save();return true;}
 const pend=()=>{const c=cu(view);let t=0;PF.forEach(p=>{const v=c[p[0]]|0;if(v!=(snap[p[0]]|0)&&!ownd(c,p[0],v))t+=p[4]*v;});return t;};
 function custBar(){if(!custOpen)return;const t=pend(),b=$('gact');$('cbar').textContent=t?'Prévia · peças novas: $ '+fmt(t):'Sem peças novas pendentes';b.textContent=t?'COMPRAR $ '+fmt(t):'CONFIRMAR';b.disabled=t>S.money;}
 function endCust(){custOpen=false;$('gar').style.display='none';$('sel').style.display='block';gLook=-.6;show(view);}
@@ -1055,16 +1069,16 @@ $('gact').onclick=()=>{const c=cu(view),t=pend();if(t>S.money)return;S.money-=t;
 function selUI(){if(!$('sel')||$('sel').style.display!='block')return;const sp=CARS[view],own=S.own.includes(view),t=tuned(view),r=Math.round,lv=carLv(view),ok=lvl()>=lv;
  $('selTitle').textContent=selMode=='illegal'?'🚨 CORRIDA CLANDESTINA':selMode=='garage'?'🔧 GARAGEM':'🏁 CORRIDA';
  $('selMoney').textContent='$ '+fmt(Math.floor(S.money))+' · Nv '+lvl();
- $('selName').innerHTML='<b style="font-size:18px">'+sp.n+'</b> <span class="lbl">'+(own?'✔ NA GARAGEM':ok?'À VENDA · $ '+fmt(sp.p):'🔒 NÍVEL '+lv+' · $ '+fmt(sp.p))+' · '+(view+1)+'/'+CARS.length+'</span>';
+ $('selName').innerHTML='<b style="font-size:18px">'+sp.n+'</b> <span class="lbl">'+(own?'✔ NA GARAGEM':ok?'À VENDA · $ '+fmt(sp.p)+(sp.gold?' + 🪙 '+fmt(sp.gold):''):'🔒 NÍVEL '+lv+' · $ '+fmt(sp.p)+(sp.gold?' + 🪙 '+fmt(sp.gold):''))+' · '+(view+1)+'/'+CARS.length+'</span>';
  const st=(l,v,x)=>'<div><div class="lbl">'+l+' · '+x+'</div><div class="bar"><i style="width:'+r(Math.min(1,v)*100)+'%"></i></div></div>';
  $('selStats').innerHTML=st('Velocidade',t.top/95,r(t.top*3.6)+' km/h')+st('Aceleração',t.acc/60,r(t.acc))+st('Potência',t.acc*t.top*.19/900,r(t.acc*t.top*.19)+' cv')+st('Controle',t.grip/1.9,r(t.grip*100)+'%')+st('Frenagem',t.brk/80,r(t.brk));
- $('selGo').textContent=own?(selMode=='garage'?'USAR ▶':'JOGAR ▶'):'COMPRAR $ '+fmt(sp.p);$('selGo').disabled=!own&&(!ok||S.money<sp.p);$('selCust').disabled=!own;}
+ $('selGo').textContent=own?(selMode=='garage'?'USAR ▶':'JOGAR ▶'):'COMPRAR $ '+fmt(sp.p)+(sp.gold?' + 🪙 '+fmt(sp.gold):'');$('selGo').disabled=!own&&(!ok||S.money<sp.p||(sp.gold&&(S.gold|0)<sp.gold));$('selCust').disabled=!own;}
 function openSel(m){selMode=m;if(m=='race')illegal=false;if(m=='illegal')illegal=true;releaseAll();paused=false;inGar=true;running=false;gLook=-.6;BEND.set(0,0);
  document.body.classList.remove('racing');$('ov').style.display='none';$('hb').style.display='none';$('gar').style.display='none';$('sel').style.display='block';show(S.own.includes(S.sel)?S.sel:0);}
 $('sL').onclick=()=>show((view+CARS.length-1)%CARS.length);$('sR').onclick=()=>show((view+1)%CARS.length);
 $('selBack').onclick=()=>{$('sel').style.display='none';inGar=false;build(S.sel);showMenu();};
 $('selGo').onclick=()=>{const sp=CARS[view];
- if(!S.own.includes(view)){if(lvl()<carLv(view)||S.money<sp.p)return;S.money-=sp.p;S.own.push(view);save();blip(660,.12,'triangle',.08);show(view);return;}
+ if(!S.own.includes(view)){buyCar(view).then(ok=>{if(ok){blip(660,.12,'triangle',.08);show(view);}});return;}
  S.sel=view;save();$('sel').style.display='none';inGar=false;build(S.sel);
  if(selMode=='garage'){showMenu();return;}
  $('menu').style.display='none';$('res').style.display='none';$('rsel').style.display='flex';$('ov').style.display='flex';renderRS();};
@@ -1682,19 +1696,24 @@ const CIDX={};
 EXC.forEach(e=>{
   const spec=Object.assign({n:e.n,p:0,top:e.top,acc:e.acc,len:e.len,wid:e.wid,h:e.h,cab:e.cab,cl:e.cl,cz:e.cz,cat:e.cat,hnd:e.hnd,exid:e.id,exk:e.kind},e.x);
   CARS.push(spec);const i=CARS.length-1;CIDX[e.id]=i;e.idx=i;});
+/* carro exclusivo de ADM: 800 km/h (222,3 m/s) — só aparece para conta administradora */
+CARS.push({n:'Phantom ADM [ADM]',p:0,top:222.3,acc:80,len:4.6,wid:2.3,h:.4,cab:.33,cl:1.25,cz:-.1,cat:'ADM',hnd:1.15,rf:1.2,ft:.24,fl:1,sc:1,adm:1});
+/* hipercarro: $ 15.000.000 + 🪙 60.000 Gold + nível 100 */
+CARS.push({n:'Obsidian Zero [Hiper]',p:15000000,gold:60000,minLv:100,top:105,acc:64,len:4.6,wid:2.32,h:.36,cab:.3,cl:1.15,cz:-.15,cat:'Hipercarro',hnd:1.2,rf:1.3,ft:.26,fl:1,sc:1});
+function admSync(){const i=CARS.findIndex(c=>c.adm);if(i<0)return;const a=isAdminAcc(),h=S.own.includes(i);if(a&&!h){S.own.push(i);save();}else if(!a&&h){S.own=S.own.filter(x=>x!==i);if(S.sel===i)S.sel=0;save();}}
 const isEx=i=>!!(CARS[i]&&CARS[i].exid);
 function seedCust(){EXC.forEach(e=>{if(!S.cust[e.idx])S.cust[e.idx]={c:e.color,r:e.rim,s:e.spoil,f:e.fin,k:e.kit,n:e.neon,eng:0,sus:0};});}
 seedCust();S.gold=+S.gold||0;
 /* loja/garagem: setas ignoram carros exclusivos que o jogador ainda não possui */
-const step=d=>{let i=view,n=0;do{i=(i+d+CARS.length)%CARS.length;n++;}while(isEx(i)&&!S.own.includes(i)&&n<CARS.length);show(i);};
+const step=d=>{let i=view,n=0;do{i=(i+d+CARS.length)%CARS.length;n++;}while(hid(i)&&n<CARS.length);show(i);};
 $('sL').onclick=()=>step(-1);$('sR').onclick=()=>step(1);
 $('selGo').addEventListener('click',e=>{if(isEx(view)&&!S.own.includes(view)){e.stopImmediatePropagation();e.preventDefault();}},true);
 /* Gold e conta nas telas existentes */
-const _smn=showMenu;showMenu=function(){const r=_smn.apply(this,arguments);try{deco();}catch(e){}return r;};
+const _smn=showMenu;showMenu=function(){const r=_smn.apply(this,arguments);try{admSync();deco();}catch(e){}return r;};
 function deco(){const mi=$('mi');if(!mi||mi.dataset.ao===String(S.gold)+(me?me.username:'-')&&mi.querySelector('.aog'))return;
   const old=mi.querySelector('.aog');if(old)old.remove();const d=document.createElement('div');d.className='aog';d.style.cssText='margin-top:4px;font-size:12px;font-weight:800';
   d.innerHTML='<span style="color:#ffd23a">🪙 '+fmt(S.gold|0)+' Gold</span> · <span style="color:'+(me?'#7dffb0':'#9aa3b2')+'">☁ '+(me?esc(me.username):'offline')+'</span>';mi.appendChild(d);mi.dataset.ao=String(S.gold)+(me?me.username:'-');}
-const _su=selUI;selUI=function(){_su.apply(this,arguments);try{if($('sel').style.display!='block')return;$('selMoney').textContent+=' · 🪙 '+fmt(S.gold|0);
+const _su=selUI;selUI=function(){try{admSync();}catch(e){}_su.apply(this,arguments);try{if($('sel').style.display!='block')return;$('selMoney').textContent+=' · 🪙 '+fmt(S.gold|0);
   if(isEx(view))$('selName').insertAdjacentHTML('beforeend',' <span class="lbl" style="color:#ffd23a">⭐ EXCLUSIVO</span>');}catch(e){}};
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
@@ -1733,6 +1752,16 @@ let needSync=false;
 async function syncRev(){if(!ready||!me||busy||running)return;try{if(needSync){needSync=false;await loadCloud();return;}const v=await rpc('profile_rev');if((v|0)!==(S._rev|0))await loadCloud();}catch(e){}}
 setInterval(syncRev,20000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)syncRev();});
 setInterval(()=>push(false),15000);
+/* ---- Gold: gastar / ganhar (via servidor quando logado) ---- */
+function gToast(m){const d=document.createElement('div');d.textContent=m;d.style.cssText='position:fixed;left:50%;top:18%;transform:translateX(-50%);z-index:99999;background:#10131f;color:#fff;border:1px solid #ffd23a;border-radius:12px;padding:10px 16px;font:700 13px system-ui;max-width:86vw;text-align:center';document.body.appendChild(d);setTimeout(()=>d.remove(),3200);}
+const gBal=r=>{const b=(r&&typeof r==='object')?(r.gold_balance!=null?r.gold_balance:r.new_gold):r;return b==null||isNaN(+b)?null:+b;};
+window.AO_spendGold=async(n,why)=>{n=Math.floor(+n)||0;if(n<=0)return true;if((S.gold|0)<n){gToast('Gold insuficiente');return false;}
+  if(me&&ready){try{const r=await rpc('spend_gold',{p_amount:n,p_reason:String(why||'')});const b=gBal(r);S.gold=b!=null?b:(S.gold|0)-n;save();try{deco();}catch(e){}return true;}
+    catch(e){gToast(/spend_gold|does not exist|schema cache/i.test(String((e&&e.message)||e))?'O servidor ainda não tem a função spend_gold (rode o SQL).':errMsg(e));return false;}}
+  S.gold=(S.gold|0)-n;save();return true;};
+window.AO_awardGold=async(n,why)=>{n=Math.max(50,Math.min(150,Math.floor(+n)||0));
+  if(me&&ready){try{const r=await rpc('award_gold',{p_amount:n,p_reason:String(why||'race')});const b=gBal(r);S.gold=b!=null?b:(S.gold|0)+n;save();try{deco();}catch(e){}return true;}catch(e){return false;}}
+  S.gold=(S.gold|0)+n;save();return true;};
 document.addEventListener('visibilitychange',()=>{if(document.hidden)push(false);});addEventListener('pagehide',()=>{push(true);});
 function refresh(){try{build(S.sel);}catch(e){}
   if(!running&&!inGar&&!paused&&$('menu').style.display==='flex')showMenu();else deco();
@@ -2810,7 +2839,8 @@ const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;'
 const logged=()=>{try{return !!A.state().me;}catch(e){return false;}};
 const isAdm=()=>{try{const m=A.state().me;return !!(m&&m.is_admin&&m.admin_unlocked);}catch(e){return false;}};
 const BN={free_b1:['Asfalto Noturno','linear-gradient(120deg,#0b1020,#1d2a5a)'],free_b2:['Pôr do Sol','linear-gradient(120deg,#ff7a1a,#7a1fa2)'],free_b3:['Neon City','linear-gradient(120deg,#0e7490,#be185d)']};
-const FR={free_f1:['Simples','#4b5563'],free_f2:['Ouro','#ffd23a'],free_f3:['Neon','#22d3ee']};
+const FR={free_f1:['Simples','#4b5563'],free_f2:['Ouro','#ffd23a'],free_f3:['Neon','#22d3ee'],free_f4:['Vermelha','#ef4444'],free_f5:['Verde','#22c55e'],free_f6:['Roxa','#a855f7'],free_f7:['Rosa','#ec4899'],free_f8:['Laranja','#f97316'],free_f9:['Branca','#f8fafc'],free_f10:['Arco-íris','#22d3ee'],adm_f1:['👑 ADM','#ff1e1e']};
+const frCls=id=>id==='adm_f1'?' fr-adm':id==='free_f10'?' fr-rb':'';
 const TT={free_t1:'Novato de Rua',free_t2:'Piloto Noturno',free_t3:'Caçador de Drift'};
 const BD={free_e1:['🏁','Primeira Corrida'],free_e2:['🔥','Pé na Tábua'],free_e3:['🏆','Campeão de Rua']};
 const AV=['🏎','🚗','🏁','🔥','⚡','👑','💀','🦅','🐺','🐉','🎯','🌙'];
@@ -2823,7 +2853,12 @@ const st=document.createElement('style');st.textContent=`
 #pfm .x{position:absolute;top:10px;right:10px;width:38px;height:38px;border:0;border-radius:50%;background:rgba(0,0,0,.5);color:#fff;font-size:18px;z-index:3}
 #pfm .bn{height:110px;border-radius:22px 22px 0 0}#pfm .hd{display:flex;gap:12px;align-items:flex-end;padding:0 16px;margin-top:-38px;position:relative}
 #pfm .av{flex:none;width:80px;height:80px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:42px;background:#0a0e1c;border:4px solid var(--fc,#4b5563);box-shadow:0 0 18px var(--fc,#4b5563)}
-#pfm .nm{min-width:0;padding-bottom:4px}#pfm .nm h2{margin:0;font-size:21px;font-style:italic;overflow-wrap:anywhere;text-shadow:none}#pfm .nm small{opacity:.75;font-size:12px}
+#pfm .nm{min-width:0;padding-bottom:4px}
+#pfm .av.fr-rb{border-color:transparent;background:linear-gradient(#0a0e1c,#0a0e1c) padding-box,conic-gradient(#ff3b3b,#ffd23a,#22c55e,#22d3ee,#a855f7,#ff3b3b) border-box;box-shadow:0 0 18px #a855f7aa}
+#pfm .av.fr-adm{border-color:transparent;background:linear-gradient(#0a0e1c,#0a0e1c) padding-box,conic-gradient(#ff1e1e,#7a0000,#ff6a6a,#7a0000,#ff1e1e) border-box;animation:pfAdm 1.6s ease-in-out infinite}
+@keyframes pfAdm{0%,100%{box-shadow:0 0 12px #ff1e1e99}50%{box-shadow:0 0 28px #ff1e1e,0 0 44px #ff1e1e66}}
+#pfm .nm h2.adm{color:#ff2a2a;text-shadow:0 0 10px #ff2a2a88}
+#pfm .admtag{display:inline-block;margin-left:6px;padding:1px 7px;border-radius:6px;background:#ff1e1e;color:#fff;font-size:10px;font-style:normal;font-weight:900;letter-spacing:.08em;vertical-align:middle}#pfm .nm h2{margin:0;font-size:21px;font-style:italic;overflow-wrap:anywhere;text-shadow:none}#pfm .nm small{opacity:.75;font-size:12px}
 #pfm .bd{padding:12px 16px 16px}#pfm .pill{display:inline-block;padding:3px 10px;border-radius:99px;background:var(--pc,#22d3ee);color:#04210f;font-weight:900;font-size:11px;letter-spacing:.05em;margin:2px 4px 2px 0}
 #pfm .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px;background:#6b7280}#pfm .dot.on{background:#22c55e;box-shadow:0 0 8px #22c55e}
 #pfm .bio{font-size:13px;line-height:1.5;opacity:.9;margin:8px 0;overflow-wrap:anywhere}
@@ -2833,7 +2868,7 @@ const st=document.createElement('style');st.textContent=`
 #pfm button.b{padding:12px;border:0;border-radius:12px;background:rgba(255,255,255,.14);color:#fff;font-weight:800;font-size:13px;letter-spacing:.04em;margin:0}
 #pfm button.b.go{background:#2563eb}#pfm button.b.rd{background:#991b1b}#pfm button.b:disabled{opacity:.45}
 #pfm input,#pfm textarea,#pfm select{width:100%;box-sizing:border-box;padding:11px 12px;border-radius:10px;border:1px solid #39466f;background:#0a0e1c;color:#fff;font:inherit;font-size:16px;outline:0;user-select:text;-webkit-user-select:text}
-#pfm .ch{display:flex;gap:6px;flex-wrap:wrap}#pfm .ch button{padding:8px 11px;border-radius:10px;border:1px solid #39466f;background:#10162b;color:#fff;font-size:13px;font-weight:700}
+#pfm .ch{display:flex;gap:6px;flex-wrap:wrap;align-content:flex-start;height:auto;min-height:0;min-width:0;width:100%;padding:6px;overflow:visible}#pfm .ch button{height:auto;min-width:0;flex:0 0 auto}#pfm .ch button{padding:8px 11px;border-radius:10px;border:1px solid #39466f;background:#10162b;color:#fff;font-size:13px;font-weight:700}
 #pfm .ch button.on{border-color:var(--pc,#22d3ee);background:#16305a}#pfm .ch button:disabled{opacity:.4}
 #pfm .msg{min-height:20px;text-align:center;font-size:13px;font-weight:700;margin-top:8px}#pfm .msg.e{color:#ff8a8a}#pfm .msg.o{color:#7dffb0}
 #pfm.fire .bn{filter:saturate(1.4) hue-rotate(-20deg)}#pfm.chrome .c{border-color:#cbd5e1}#pfm.carbon .c{background:repeating-linear-gradient(45deg,#12151f 0 6px,#0d1018 6px 12px)}
@@ -2855,7 +2890,7 @@ async function load(u){B().innerHTML='<div style="padding:30px;text-align:center
 function badgeHTML(P){const L=(P.badges||[]);return L.length?L.map(id=>{const b=BD[id]||[((P.items||[]).find(i=>i.id===id)||{}).emoji||'🏅',((P.items||[]).find(i=>i.id===id)||{}).name||id];return '<span class="pill" style="background:#ffffff22;color:#fff">'+esc(b[0])+' '+esc(b[1])+'</span>';}).join(''):'<span style="opacity:.6;font-size:12px">Nenhum emblema equipado</span>';}
 function draw(){root.className='on '+(P.style||'neon');root.style.setProperty('--pc',P.color);
   const s=P.stats||{},races=+s.races||0,wins=+s.wins||0,lv=lvOf(+P.xp||0);
-  let h='<div class="bn" style="background:'+bnS(P.banner)+'"></div><div class="hd"><div class="av" style="--fc:'+frC(P.frame)+'">'+esc(P.avatar)+'</div><div class="nm"><h2>'+esc(P.display_name)+'</h2><small><span class="dot'+(P.online?' on':'')+'"></span>'+(P.online?'online':'offline')+' · @'+esc(P.username)+'</small></div></div><div class="bd">';
+  let h='<div class="bn" style="background:'+bnS(P.banner)+'"></div><div class="hd"><div class="av'+frCls(P.frame)+'" style="--fc:'+frC(P.frame)+'">'+esc(P.avatar)+'</div><div class="nm"><h2'+(P.admin?' class="adm"':'')+'>'+esc(P.display_name)+(P.admin?'<span class="admtag">ADM</span>':'')+'</h2><small><span class="dot'+(P.online?' on':'')+'"></span>'+(P.online?'online':'offline')+' · @'+esc(P.username)+'</small></div></div><div class="bd">';
   h+='<span class="pill">'+esc(tName(P.title))+'</span>'+(P.job?'<span class="pill" style="background:#ffd23a">'+esc(P.job)+'</span>':'');
   h+='<div class="bio">'+(P.bio?esc(P.bio):'<i style="opacity:.5">Sem biografia.</i>')+'</div><div class="g"><div><b>'+lv+'</b><span>nível</span></div><div><b>🪙 '+fmt(P.gold)+'</b><span>gold</span></div><div><b>'+fmt(P.cars)+'</b><span>carros</span></div><div><b id="pfRk">—</b><span>ranking</span></div><div><b>'+races+'</b><span>corridas</span></div><div><b>'+wins+'</b><span>vitórias</span></div><div><b>'+Math.max(0,races-wins)+'</b><span>derrotas</span></div><div><b>'+(races?Math.round(wins/races*100)+'%':'—')+'</b><span>aproveit.</span></div></div>';
   h+='<label>Carro favorito</label><div>'+(P.fav_car?'🚘 '+esc(P.fav_car):'<span style="opacity:.6">—</span>')+'</div><label>Emblemas e conquistas</label><div>'+badgeHTML(P)+'</div><label>Entrou em</label><div>'+(P.joined?new Date(P.joined).toLocaleDateString('pt-BR'):'—')+'</div><div class="msg" id="pfMsg"></div><div class="row">';
@@ -2871,7 +2906,7 @@ function draw(){root.className='on '+(P.style||'neon');root.style.setProperty('-
 async function rank(){try{const L=await rpc('ranked_leaderboard',{p_season:null,p_division:null,p_limit:200}),r=L.find(x=>String(x.username).toLowerCase()===String(P.username).toLowerCase());if($('pfRk'))$('pfRk').textContent=r?'#'+r.pos:'—';}catch(e){}}
 /* ---- personalizar: salva sozinho (800 ms depois da última alteração) ---- */
 function edit(){view='edit';const sel=(arr,cur,k,lock)=>'<div class="ch" data-k="'+k+'">'+arr.map(a=>'<button data-v="'+esc(a[0])+'"'+(a[0]===cur?' class="on"':'')+'>'+esc(a[1])+'</button>').join('')+'</div>';
-  const bnL=Object.keys(BN).map(k=>[k,'🖼 '+BN[k][0]]).concat(items('banner').map(i=>[i.id,'🖼 '+i.name])),frL=Object.keys(FR).map(k=>[k,'🔲 '+FR[k][0]]).concat(items('frame').map(i=>[i.id,'🔲 '+i.name])),
+  const bnL=Object.keys(BN).map(k=>[k,'🖼 '+BN[k][0]]).concat(items('banner').map(i=>[i.id,'🖼 '+i.name])),frL=Object.keys(FR).filter(k=>k!=='adm_f1'||P.admin).map(k=>[k,'🔲 '+FR[k][0]]).concat(items('frame').map(i=>[i.id,'🔲 '+i.name])),
   ttL=Object.keys(TT).map(k=>[k,TT[k]]).concat(items('title').map(i=>[i.id,i.name])),bdL=Object.keys(BD).map(k=>[k,BD[k][0]+' '+BD[k][1]]).concat(items('badge').map(i=>[i.id,(i.emoji||'🏅')+' '+i.name]));
   B().innerHTML='<div class="bd"><h2 style="margin:0 40px 6px 0;font-style:italic">✏ PERSONALIZAR PERFIL</h2><div class="msg" id="pfMsg">As alterações são salvas automaticamente.</div>'+
   '<label>Nome de exibição</label><input id="pfN" maxlength="24" value="'+esc(P.display_name)+'"><label>Biografia</label><textarea id="pfBio" maxlength="160" rows="3">'+esc(P.bio)+'</textarea>'+
