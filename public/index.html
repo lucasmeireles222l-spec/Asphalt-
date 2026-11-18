@@ -3153,7 +3153,13 @@ setTimeout(loadTop,2500);setTimeout(loadDrift,2800);
 
 /* ===== TEMPO DE JOGO (segundos em S.stats.pt, vai para a nuvem junto com o save) ===== */
 (function(){var last=Date.now(),sv=0;
-function tick(){var n=Date.now(),d=(n-last)/1000;last=n;if(document.visibilityState!=='visible'||d<=0)return;S.stats=S.stats||{};S.stats.pt=(+S.stats.pt||0)+Math.min(d,5);if((sv+=d)>=10){sv=0;save();}}
+function tick(){var n=Date.now(),d=(n-last)/1000;last=n;if(document.visibilityState!=='visible'||d<=0)return;S.stats=S.stats||{};
+ /* contas antigas: o contador só passou a existir agora, então estima o tempo já jogado UMA vez (flag ptb) e soma ao total */
+ var nr=(+S.stats.races||0)+((S.en&&+S.en.r)||0);if(!S.stats.ptb&&nr>0){S.stats.pt=(+S.stats.pt||0)+Math.round((nr*100+((S.dr&&+S.dr.n)||0)*60)*1.5);S.stats.ptb=1;save();}
+ /* tempo mínimo conhecido por usuário (segundos). Aplica uma vez por conta (flag ptm). Para mudar: edite os números abaixo. */
+ var PTMIN={nkzz_x:(3*3600+16*60)+(2*3600+58*60)}/* 3h16 + 2h58 = 6h14 */,un=String(((window.__ao2&&__ao2.state&&__ao2.state().me)||{}).username||'').toLowerCase();
+ if(un&&PTMIN[un]&&!S.stats.ptm){S.stats.ptm=1;if((+S.stats.pt||0)<PTMIN[un])S.stats.pt=PTMIN[un];save();}
+ S.stats.pt=(+S.stats.pt||0)+Math.min(d,5);if((sv+=d)>=10){sv=0;save();}}
 setInterval(tick,1000);document.addEventListener('visibilitychange',function(){last=Date.now();if(document.visibilityState!=='visible')save();});window.addEventListener('pagehide',save);})();
 /* tempo de jogo também no cartão do menu (atualiza a cada segundo) */
 (function(){var z=function(n){return String(n).padStart(2,'0');};
