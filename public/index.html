@@ -1138,14 +1138,14 @@ function botBrain(r,i,dt,c){
   return{tg:tg,lx:cl(lx,-7.2,7.2),rt2:rt2,acc:c.sp<tg*.6?1.6:.8};
 }
 function policeAI(dt,top){const rc=RC();let near=false,on=((performance.now()/200)|0)%2;
-  PL.forEach((p,i)=>{if(i>=rc.pol)return;const m=p.m,as=Math.max(0,speed);const dz=m.position.z-z,pt=Math.max(top*(.9+.01*rc.pol)+i*.5+(dz>120?top*.04:0),as*.99+(dz>25?1+Math.min(5,dz*.04):0));
-    const tg=dz>40?pt*(1+Math.min(.05,dz/900)):dz>0?Math.min(pt*1.04,as+Math.max(-5,(dz-6)*.65)):dz<-4?-Math.min(20,3+(-dz)*.45):as*.92;p.sp+=(tg-p.sp)*dt*(dz>0&&dz<=40?2.5:dz<0?2.8:1.3);m.position.z-=p.sp*dt;
-    const near2=Math.abs(dz)<28,aim=x+vx*.12+(near2?(i-1)*1.6:(i-1)*.9);
-    m.position.x=Math.max(-7.5,Math.min(7.5,m.position.x+(aim-m.position.x)*dt*(near2?1.8:1.05)));spinCar(m,p.sp,dt);
+  PL.forEach((p,i)=>{if(i>=rc.pol)return;const m=p.m,as=Math.max(0,speed);const dz=m.position.z-z,pt=Math.max(top*(.78+.01*rc.pol)+i*.3,as*.93+(dz>25?.5+Math.min(2,dz*.015):0));
+    const tg=dz>40?pt*(1+Math.min(.02,dz/1800)):dz>0?Math.min(pt*1.01,as+Math.max(-6,(dz-6)*.4)):dz<-4?-Math.min(20,3+(-dz)*.45):as*.92;p.sp+=(tg-p.sp)*dt*(dz>0&&dz<=40?2.5:dz<0?2.8:1.3);m.position.z-=p.sp*dt;
+    const near2=Math.abs(dz)<28,aim=x+vx*.05+(near2?(i-1)*2.2:(i-1)*1.4);
+    m.position.x=Math.max(-7.5,Math.min(7.5,m.position.x+(aim-m.position.x)*dt*(near2?1.1:.7)));spinCar(m,p.sp,dt);
     const dx=x-m.position.x,adz=Math.abs(z-m.position.z);
-    if(Math.abs(dx)<2.1&&adz<4.3){vx=Math.max(-14,Math.min(14,vx+Math.sign(dx||1)*3.5));speed*=1-dt*1.0;shake=.3;thud(.3);catchT+=dt*.04;}
-    if(adz<8&&Math.abs(dx)<3)near=true;p.r.material.opacity=on?1:.15;p.b.material.opacity=on?.15:1;});
-  catchT=(near&&rt>6)?Math.min(1.2,catchT+dt*(.07+.02*rc.pol)):Math.max(0,catchT-dt*.6);
+    if(Math.abs(dx)<2.1&&adz<4.3){vx=Math.max(-14,Math.min(14,vx+Math.sign(dx||1)*2));speed*=1-dt*.45;shake=.25;thud(.25);catchT+=dt*.015;}
+    if(adz<6&&Math.abs(dx)<2.5)near=true;p.r.material.opacity=on?1:.15;p.b.material.opacity=on?.15:1;});
+  catchT=(near&&rt>10)?Math.min(1.2,catchT+dt*(.028+.008*rc.pol)):Math.max(0,catchT-dt*1.2);
   if(catchT>=1&&!fin){fin=true;finish(0,true);}}
 function chaseHud(){const e=document.getElementById('chase');if(!(illegal&&mode=='race'&&running)){if(e.textContent)e.textContent='';return;}
   const t='🚨 '+'★'.repeat(RC().pol)+' · CAPTURA '+Math.round(Math.min(1,catchT)*100)+'%';if(e.textContent!==t)e.textContent=t;e.style.color=catchT>.6?'#ff3b3b':'#ff9b9b';}
@@ -1293,7 +1293,10 @@ function edFac(n){return EDC['f'+n]||(EDC['f'+n]=(()=>{const S=FSY[n],R=mb32(n.l
 const edFM=n=>EDC['fm'+n]||(EDC['fm'+n]=new THREE.MeshLambertMaterial({map:edFac(n)[0],emissiveMap:edFac(n)[1],emissive:0xffffff,emissiveIntensity:FSY[n].em,vertexColors:true}));
 const edBase={};const edGeo=n=>edBase[n]||(edBase[n]=edG[n].index?edG[n].toNonIndexed():edG[n]);
 function edMk(){const Bk={},m4=new THREE.Matrix4(),q=new THREE.Quaternion(),eu=new THREE.Euler(),v=new THREE.Vector3(),s=new THREE.Vector3(),nm=new THREE.Matrix3(),co=new THREE.Color(),t=new THREE.Vector3();
- const add=(gn,c,x,y,z,sx,sy,sz,o)=>{o=o||{};const key=o.f?'f'+o.f:'b'+(o.b|0),B=Bk[key]||(Bk[key]={p:[],n:[],c:[],u:[]}),g=edGeo(gn),P=g.attributes.position,N=g.attributes.normal,U=g.attributes.uv;
+ const add=(gn,c,x,y,z,sx,sy,sz,o)=>{o=o||{};
+  /* PISTA LIVRE: pedra/árvore/arbusto/duna (esfera, cone, cilindro) com a base abaixo de 7 m nunca fica sobre o asfalto */
+  if((gn==='sph'||gn==='cone'||gn==='cyl')&&!o.rx&&!o.rz&&(gn==='sph'?y-sy:y-sy/2)<7){const m=10+Math.max(sx,sz);if(Math.abs(x)<m)x=(x<0?-1:1)*m;}
+  const key=o.f?'f'+o.f:'b'+(o.b|0),B=Bk[key]||(Bk[key]={p:[],n:[],c:[],u:[]}),g=edGeo(gn),P=g.attributes.position,N=g.attributes.normal,U=g.attributes.uv;
   eu.set(o.rx||0,o.ry||0,o.rz||0);q.setFromEuler(eu);m4.compose(v.set(x,y,z),q,s.set(sx,sy,sz));nm.getNormalMatrix(m4);co.set(c);
   for(let i=0;i<P.count;i++){t.fromBufferAttribute(P,i).applyMatrix4(m4);B.p.push(t.x,t.y,t.z);const nx=N.getX(i),ny=N.getY(i),nz=N.getZ(i);t.set(nx,ny,nz).applyMatrix3(nm).normalize();B.n.push(t.x,t.y,t.z);B.c.push(co.r,co.g,co.b);
    if(o.f){if(Math.abs(ny)>.5)B.u.push(.02,.02);else B.u.push(U.getX(i)*(Math.abs(nz)>.5?sx:sz)/9.6,U.getY(i)*sy/18);}}};
@@ -1351,7 +1354,7 @@ function envDeco(ei,ci,k){
    for(let i=0;i<(dn>.5?3:1);i++)pine(s*F(75,160),Z(),F(24,36));const mh=F(60,100);a('cone',0x3f6a58,s*F(150,220),mh/2,Z(),F(60,90),mh,F(60,90));a('cone',0x4a6a88,s*F(280,380),mh*.7,Z(),F(90,120),mh*1.4,F(90,120));});
   if(ci%3==0){fl(-34,-27,0x2f8fcf,.03);fl(-27.4,-27,0x6a5a3a,.04);fl(-34.4,-34,0x6a5a3a,.04);}
   if(ci%4==2){a('box',0xa5754a,24,2,-6,7,4,6);a('cone',0x7a3a2a,24,5,-6,5.6,2.4,5.6,{ry:.785});a('box',0x8a8a8a,26,5.6,-5,.7,1.8,.7);for(let z=-14;z<=2;z+=4)a('box',0x8a6a3a,19.5,.5,z,.15,1,.15);}
-  if(ci==4){SD.forEach(s=>{rock(s*12,0,9,0x6f6a62);});a('box',0x6f6a62,0,10.5,0,26,3,16);for(let i=0;i<3;i++)pine(F(-9,9),F(-6,6),9);}
+  if(ci==4){SD.forEach(s=>{rock(s*19.5,0,9,0x6f6a62);});a('box',0x6f6a62,0,10.5,0,48,3,16);for(let i=0;i<3;i++)pine(F(-9,9),F(-6,6),9);}
  }else if(k==='mount'){
   fl(9.2,14,0x7d7468);fl(-26,-9.2,0x6f6a62);fl(-420,-26,0x6f6a62);fl(14,16,0x4a7a3a);
   {const h=F(45,95),w=F(14,20);a('box',0x6b5b52,-F(27,32),h/2,0,w,h,CL+.2,{ry:.04});a('box',0xf2f6ff,-F(27,32),h-1.4,0,w*.8,2.8,CL+.2);}
