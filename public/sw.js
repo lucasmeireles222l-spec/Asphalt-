@@ -5,17 +5,17 @@
  * - Ativação só quando o jogador toca em ATUALIZAR AGORA (mensagem SKIP_WAITING).
  * - Abre offline a última versão instalada. Nunca toca em /ws, /health, Supabase nem salvamentos. */
 'use strict';
-const VERSION = '2026.11.17-2';
-const BUILD_HASH = 'ab26095eccb0d533';
+const VERSION = '2026.11.24-1';
+const BUILD_HASH = 'c24b37efcb27866b';
 const FILES = {
-  "/index.html": "a913450e5f28cb71b20d7510f750945115d93a2a2d11fc6b7b3c5a706e8f3071",
+  "/index.html": "c24b37efcb27866ba6aebcd4bbae1479fd87ca38b9afe44b1fb794259db2365b",
   "/manifest.webmanifest": "5f5e84ce100355c686ea66affaaec3b18f830cbd2ca1b3014c41f56237f6ba11",
   "/icon-192.png": "4d200ce2a56424705b5b1abd45e10c8a86f5f890e6154535a045b9008aad1921",
   "/icon-512.png": "e133d90009f85d794eac32ce14c562ae277e47130a6f3bfd5e3f4fe59469a8d2",
   "/icon-maskable-512.png": "ac6f36c82d54435461859044fd2292db4e50164273c1c331c33e9da8e441b493"
 };                 /* { "/index.html": "sha256…", … } */
 const STRICT = true;                     /* false = só avisa no console quando o hash diverge (veja LEIA-ME) */
-const STATIC = 'ao-static-' + VERSION, RT = 'ao-rt';
+const STATIC = 'ao-static-' + VERSION, RT = 'ao-rt2';   /* novo nome: descarta caches de bibliotecas que possam ter sido gravados com erro */
 const CDN = ['https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js', 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2'];
 const hex = b => [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, '0')).join('');
 
@@ -32,7 +32,7 @@ self.addEventListener('install', e => {
         const headers = { 'Content-Type': res.headers.get('Content-Type') || 'application/octet-stream' };
         await cache.put(path, new Response(buf, { status: 200, headers }));   /* resposta nova: sem redirecionamentos */
       }
-    } catch (err) { await caches.delete(STATIC); throw err; }               /* aborta: versão atual segue funcionando */
+    } catch (err) { await caches.delete(STATIC); throw err; }               /* aborta: versão atual continua funcionando */
     const rt = await caches.open(RT);                                         /* bibliotecas externas: melhor esforço */
     await Promise.all(CDN.map(u => fetch(u, { mode: 'cors' }).then(r => r.ok && rt.put(u, r)).catch(() => { })));
   })());
@@ -52,9 +52,13 @@ self.addEventListener('message', e => {
 });
 
 async function swr(req) {
-  const c = await caches.open(RT), hit = await c.match(req);
-  const net = fetch(req).then(r => { if (r && (r.ok || r.type === 'opaque')) c.put(req, r.clone()); return r; }).catch(() => null);
-  return hit || (await net) || Response.error();
+  /* só grava no cache respostas VERIFICADAS (cors + ok). Antes, respostas "opacas" eram gravadas mesmo quando o CDN
+     devolvia erro, e o jogo ficava preso com uma biblioteca quebrada até limpar os dados do Chrome. */
+  const c = await caches.open(RT), hit = await c.match(req.url);
+  const net = fetch(req.url, { mode: 'cors', credentials: 'omit' })
+    .then(r => { if (r && r.ok) { c.put(req.url, r.clone()); return r; } return null; }).catch(() => null);
+  if (hit) return hit;
+  return (await net) || fetch(req).catch(() => Response.error());
 }
 
 self.addEventListener('fetch', e => {

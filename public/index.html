@@ -1189,7 +1189,18 @@ const podR=new THREE.Mesh(new THREE.TorusGeometry(4.3,.05,8,48),new THREE.MeshBa
 const spdEl=document.getElementById('spd'), distEl=document.getElementById('dist'),sbar=document.getElementById('sbar');
 const $=id=>document.getElementById(id), mnyEl=$('mny');
 const nbar=$('nbar'),gearEl=$('gear'),rbar=$('rbar'),fxEl=$('fx'),mmEl=$('mm'),mmx=mmEl.getContext('2d'),mm2=$('mm2'),m2x=mm2.getContext('2d'); let S={money:3000,own:[0],sel:0,cust:{},stats:{races:0,wins:0},best:{}}, view=0, ga=0, inGar=false, sv=0, nit=100, paused=false;
-try{const j=JSON.parse(localStorage.getItem('srl1')||'null'); if(j)S=Object.assign(S,j);}catch(e){}
+try{const j=JSON.parse(localStorage.getItem('srl1')||'null'); if(j&&typeof j==='object'&&!Array.isArray(j))S=Object.assign(S,j);}catch(e){try{localStorage.removeItem('srl1');}catch(_){}}
+/* sanidade: dados antigos/corrompidos não podem derrubar o menu ao reabrir */
+(function(){try{
+  if(!Number.isFinite(+S.money))S.money=3000;
+  if(!Array.isArray(S.own)||!S.own.length)S.own=[0];
+  S.own=S.own.filter(i=>Number.isInteger(i)&&i>=0&&(typeof CARS==='undefined'||CARS[i]));if(!S.own.length)S.own=[0];
+  if(!Number.isInteger(S.sel)||(typeof CARS!=='undefined'&&!CARS[S.sel]))S.sel=0;
+  if(!S.own.includes(S.sel))S.sel=S.own[0];
+  if(!S.cust||typeof S.cust!=='object'||Array.isArray(S.cust))S.cust={};
+  if(!S.stats||typeof S.stats!=='object')S.stats={races:0,wins:0};
+  if(!S.best||typeof S.best!=='object')S.best={};
+}catch(e){}})();
 const save=()=>{try{localStorage.setItem('srl1',JSON.stringify(S));}catch(e){}};
 /* gravação periódica da corrida: adiada para um momento ocioso (evita micro-travada no meio do frame); grava de qualquer forma ao sair */
 let _svQ=0;const saveIdle=()=>{if(_svQ)return;_svQ=1;const run=()=>{_svQ=0;save();};if(window.requestIdleCallback)requestIdleCallback(run,{timeout:2500});else setTimeout(run,400);};
@@ -2454,7 +2465,7 @@ const CFG=window.AO_CONFIG||{};
 let sb=null,me=null,ready=false,lastSnap='',busy=false;
 const cfgOk=()=>!!(CFG.SUPABASE_URL&&CFG.SUPABASE_ANON_KEY&&!/COLE_AQUI/i.test(CFG.SUPABASE_URL+CFG.SUPABASE_ANON_KEY));
 function problem(){if(!window.supabase)return 'A biblioteca do Supabase não carregou. Verifique a internet e recarregue.';if(!cfgOk())return 'Supabase não configurado: preencha SUPABASE_URL e SUPABASE_ANON_KEY no topo do HTML.';return '';}
-function client(){if(sb)return sb;if(problem())return null;sb=window.supabase.createClient(CFG.SUPABASE_URL,CFG.SUPABASE_ANON_KEY,{auth:{persistSession:true,autoRefreshToken:true}});return sb;}
+function client(){if(sb)return sb;if(problem())return null;sb=window.supabase.createClient(CFG.SUPABASE_URL,CFG.SUPABASE_ANON_KEY,{auth:{persistSession:true,autoRefreshToken:true,lock:async(name,timeout,fn)=>await fn()}});return sb;}
 async function rpc(fn,args){const c=client();if(!c)throw new Error(problem());const r=await c.rpc(fn,args||{});if(r.error)throw r.error;return r.data;}
 const emailFor=u=>(u.indexOf('@')>=0?u:u.toLowerCase()+'@'+(CFG.AUTH_DOMAIN||'asphaltoutlaws.app'));
 function errMsg(e){const m=String((e&&e.message)||e||'');
@@ -2506,7 +2517,12 @@ async function auth(mode,user,pass,mail){const c=client();if(!c)throw new Error(
   else{const r=await c.auth.signInWithPassword({email:emailFor(user),password:pass});if(r.error)throw r.error;}
   await loadCloud();}
 async function logout(){try{await push(true);}catch(e){}try{await sb.auth.signOut();}catch(e){}me=null;ready=false;lastSnap='';refresh();}
-(function boot(){const c=client();if(!c)return;c.auth.getSession().then(r=>{if(r&&r.data&&r.data.session)loadCloud().catch(()=>{});}).catch(()=>{});})();
+(function boot(){const c=client();if(!c)return;
+  const lim=(p,ms)=>Promise.race([p,new Promise((_,rj)=>setTimeout(()=>rj(new Error('timeout')),ms))]);
+  lim(c.auth.getSession(),8000).then(r=>{if(r&&r.data&&r.data.session)return lim(loadCloud(),15000);}).catch(e=>{
+    /* sessão velha/corrompida no navegador: descarta só o login (o progresso fica salvo na conta) em vez de exigir limpar dados do Chrome */
+    try{if(!/timeout|fetch|network|load failed/i.test(String((e&&e.message)||e))){Object.keys(localStorage).filter(k=>/^sb-.*-auth-token/.test(k)).forEach(k=>localStorage.removeItem(k));}}catch(_){}
+  });})();
 
 /* ================= ESTILO ================= */
 const st=document.createElement('style');st.textContent=`
