@@ -3985,7 +3985,7 @@ var RO=function(){return S.rko=S.rko||{p:0,w:0,r:0,h:[]};},dv=function(p){var d=
 var st=document.createElement('style');st.textContent='#rkO{position:fixed;inset:0;z-index:60;display:none;overflow-y:auto;background:linear-gradient(#0b0d1af2,#1a0d22f7);padding:calc(env(safe-area-inset-top,0px) + 14px) 14px 24px;color:#fff;text-align:center}#rkO h2{margin:4px 0;font-style:italic;font-size:26px}#rkO .dv{display:inline-block;margin:8px;padding:6px 22px;border-radius:99px;font-weight:900;font-size:20px;letter-spacing:.08em;color:#0a0e1c}#rkO .pt{font-size:46px;font-weight:900;font-style:italic}#rkO .br{height:10px;max-width:320px;margin:8px auto;border-radius:9px;background:#0a0e1c;border:1px solid #2a3050;overflow:hidden}#rkO .br i{display:block;height:100%}#rkO .h{max-width:320px;margin:10px auto;font-size:13px;text-align:left}#rkO .h div{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #ffffff18}#rkO button{width:100%;max-width:360px;padding:17px;border:0;border-radius:14px;font-weight:900;font-size:19px;margin-top:8px}';
 document.head.appendChild(st);
 var el=document.createElement('div');el.id='rkO';document.body.appendChild(el);
-var SP=[15,6,-5,-10],CAP=350;
+var SP=[15,6,-5,-10],CAP=150;   /* igual ao limite do servidor (ranked_solo_apply) */
 function dkey(){var d=new Date(),z=function(n){return(n<10?'0':'')+n;};return d.getFullYear()+'-'+z(d.getMonth()+1)+'-'+z(d.getDate());}
 function RD(){var o=RO();if(o.dk!==dkey()){o.dk=dkey();o.dg=0;}o.dg=Math.max(0,Math.min(CAP,+o.dg||0));return o;}
 function left(){return Math.max(0,CAP-RD().dg);}
@@ -3999,7 +3999,7 @@ function view(srv){var o=RO(),lg=lgd(),m=srv&&srv.me,nm,dn,dc,pts,pc,tail,mt,wn,
  '<div class="dv" style="background:'+dc+'">'+dn+'</div><div class="pt">'+pts+' <small style="font-size:16px">pts</small></div>'+
  '<div class="br"><i style="width:'+pc+'%;background:'+dc+'"></i></div><div class="lbl">'+tail+'</div>'+
  '<div class="lbl" style="margin-top:6px">'+mt+' partidas · '+wn+' vitórias</div>'+capHtml()+
- '<div class="lbl">1º +'+SP[0]+' · 2º +'+SP[1]+' · 3º '+SP[2]+' · 4º '+SP[3]+(lg?' · máx. +350 pts/dia no solo':'')+' · bots rápidos e ainda mais fortes em divisões altas</div>'+
+ '<div class="lbl">1º +'+SP[0]+' · 2º +'+SP[1]+' · 3º '+SP[2]+' · 4º '+SP[3]+(lg?' · máx. +150 pts/dia no solo':'')+' · bots rápidos e ainda mais fortes em divisões altas</div>'+
  '<div class="h">'+(hist.length?hist.slice(0,6).map(function(x){return '<div><span>'+x.r+'º lugar</span><b style="color:'+(x.g>=0?'#7dffb0':'#ff6b6b')+'">'+(x.g>=0?'+':'')+x.g+'</b></div>';}).join(''):'<div style="opacity:.6">Nenhuma partida ainda</div>')+'</div>'+
  '<button style="background:#22c55e;color:#04210f" id="rkGo">▶ JOGAR</button><br><button style="background:rgba(255,255,255,.14);color:#fff" id="rkBk">◀ VOLTAR</button>';}
 function paint(){view(null);if(lgd()&&window.__ao2.rpc)window.__ao2.rpc('ranked_me').then(function(d){if(el.style.display==='block')view(d);}).catch(function(){});}
@@ -4012,7 +4012,7 @@ window.__rkNext=launch;window.__rkOn=function(){return RK.on;};
 var _fk=finish;finish=function(rank,bust){var on=RK.on;RK.on=0;_fk(rank,bust);if(!on)return;var o=RD(),p0=o.p,lg0=lgd(),g=bust?PT[3]:PT[Math.min(3,rank-1)];if(g>0&&!lg0){g=Math.min(g,left());o.dg=Math.min(CAP,o.dg+g);}o.p=Math.max(0,o.p+g);o.r++;if(rank==1&&!bust)o.w++;o.h.unshift({r:rank,g:o.p-p0});o.h=o.h.slice(0,10);save();
  var d0=dv(p0),d1=dv(o.p),df=o.p-p0,ins=function(h){var t=$('rtxt');if(t)t.insertAdjacentHTML('beforeend','<div class="rx">'+h+capHtml()+'</div>');},
  loc='⚔️ DESAFIO SOLO: '+(df>=0?'+':'')+df+' pts · '+DV[d1][0]+' ('+o.p+')'+(d1>d0?' ⬆ SUBIU DE DIVISÃO!':d1<d0?' ⬇ caiu de divisão':''),A=window.__ao2;
- if(lgd()&&A&&A.rpc&&(function(){var gs=bust?SP[3]:SP[Math.min(3,rank-1)];return gs<=0||left()>=gs;})()){A.rpc('ranked_solo_apply',{p_rank:Math.min(4,Math.max(1,rank|0)),p_bust:!!bust}).then(function(r){var h;
+ if(lgd()&&A&&A.rpc&&(function(){var gs=bust?SP[3]:SP[Math.min(3,rank-1)];return gs<=0||left()>0;})()){A.rpc('ranked_solo_apply',{p_rank:Math.min(4,Math.max(1,rank|0)),p_bust:!!bust}).then(function(r){var h;
    if(r&&r.ok){if(r.delta>0){RD().dg=Math.min(CAP,RD().dg+r.delta);save();}h='⚔️ DESAFIO SOLO → RANQUEADA: '+(r.delta>=0?'+':'')+r.delta+' pts · '+r.division.name+' ('+r.points+')'+(r.promoted?' ⬆ SUBIU DE PATENTE!':r.demoted?' ⬇ caiu de patente':'')+((r.flags||[]).indexOf('daily_cap')>=0?' · limite diário do solo atingido':'');try{window.AO_RANKED&&AO_RANKED.refresh();}catch(e){}}
    else if(r&&r.error==='too_fast')h='⚔️ Aguarde 45 s entre partidas solo para pontuar na ranqueada.';
    else if(r&&r.error==='no_season')h='⚔️ Sem temporada ativa agora: o solo não pontuou na ranqueada.';
@@ -5023,7 +5023,7 @@ const ms=$('msec');if(ms)ms.before(bt);
     tb.id='aoTrainBtn';tb.type='button';tb.setAttribute('aria-expanded','false');
     S.row.appendChild(tb);S.online=S.row;
     const pn=mk('div','aoPanel');S.train=pn;S.clan=mk('div');
-    const dsb=mk('button','aoTrain aoR','<span class="ai">⚔️</span><span class="at">DESAFIOS<small id="aoDsSub">Solo · 350 pts por dia</small></span><span class="ac">›</span>');dsb.id='aoDsBtn';dsb.type='button';dsb.onclick=()=>{if(window.__dsOpen)window.__dsOpen();};
+    const dsb=mk('button','aoTrain aoR','<span class="ai">⚔️</span><span class="at">DESAFIOS<small id="aoDsSub">Solo · 150 pts por dia</small></span><span class="ac">›</span>');dsb.id='aoDsBtn';dsb.type='button';dsb.onclick=()=>{if(window.__dsOpen)window.__dsOpen();};
     hero.append(S.play,S.row,pn,S.clan,dsb);
     tb.onclick=()=>{const o=pn.classList.toggle('open');tb.setAttribute('aria-expanded',o?'true':'false');};
     /* categorias */
