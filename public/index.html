@@ -2443,7 +2443,13 @@ EXC.forEach(e=>{
 CARS.push({n:'Phantom ADM [ADM]',p:0,top:222.3,acc:80,len:4.6,wid:2.3,h:.4,cab:.33,cl:1.25,cz:-.1,cat:'ADM',hnd:1.15,rf:1.2,ft:.24,fl:1,sc:1,adm:1});
 /* hipercarro: $ 15.000.000 + 🪙 60.000 Gold + nível 100 */
 CARS.push({n:'Obsidian Zero [Hiper]',p:15000000,gold:60000,minLv:100,top:105,acc:64,len:4.7,wid:2.3,h:.42,cab:.34,cl:1.4,cz:.3,cat:'Hipercarro',hnd:1.2,rf:.6,ft:.16,nz:.26,fl:1,sc:1,leg:1});
-function admSync(){const i=CARS.findIndex(c=>c.adm);if(i<0)return;const a=isAdminAcc(),h=S.own.includes(i);if(a&&!h){S.own.push(i);save();}else if(!a&&h){S.own=S.own.filter(x=>x!==i);if(S.sel===i)S.sel=0;save();}}
+/* Falcon GT com a mesma velocidade/aceleração do carro do ADM — SOMENTE para as contas desta lista */
+const FALCON_BOOST=['lucasdk140'];
+function falconBoost(){try{const f=CARS.find(c=>c.n==='Falcon GT'),a=CARS.find(c=>c.adm);if(!f||!a)return;
+  if(!f._o)f._o={top:f.top,acc:f.acc};
+  const m=window.__ao2&&window.__ao2.state&&window.__ao2.state().me,u=m&&m.username?String(m.username).toLowerCase():'';
+  const on=FALCON_BOOST.indexOf(u)>=0;f.top=on?a.top:f._o.top;f.acc=on?a.acc:f._o.acc;}catch(e){}}
+function admSync(){falconBoost();const i=CARS.findIndex(c=>c.adm);if(i<0)return;const a=isAdminAcc(),h=S.own.includes(i);if(a&&!h){S.own.push(i);save();}else if(!a&&h){S.own=S.own.filter(x=>x!==i);if(S.sel===i)S.sel=0;save();}}
 const isEx=i=>!!(CARS[i]&&CARS[i].exid);
 function seedCust(){EXC.forEach(e=>{if(!S.cust[e.idx])S.cust[e.idx]={c:e.color,r:e.rim,s:e.spoil,f:e.fin,k:e.kit,n:e.neon,eng:0,sus:0};});}
 seedCust();S.gold=+S.gold||0;
