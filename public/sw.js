@@ -5,7 +5,7 @@
  * - Ativação só quando o jogador toca em ATUALIZAR AGORA (mensagem SKIP_WAITING).
  * - Abre offline a última versão instalada. Nunca toca em /ws, /health, Supabase nem salvamentos. */
 'use strict';
-const VERSION = '2026.11.26-1';
+const VERSION = '2026.11.26-3';
 const BUILD_HASH = '6d5e10cc9909a6f4';
 const FILES = {
   "/index.html": "6d5e10cc9909a6f46a63f1db75fdbdcab3caf27a56a79dacd24e729585492bc2",

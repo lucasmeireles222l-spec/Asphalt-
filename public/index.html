@@ -4671,7 +4671,7 @@ var PFd=function(code){return PF.filter(function(p){return p[0]===code;})[0];};
 var CELCMP=[['Original','Swan-neck','Splitter de fábrica','Difusor de fábrica','Centro-trava prata'],['TRACK MONSTER','Competição 2 elementos','Splitter + canards','Difusor ampliado','Laranja forjada'],['DARK PHANTOM','Carbono com ducktail','Lábio de carbono','Carbono aparente','Pretas'],['APEX RS','Alta com winglets','Splitter + flares largos','Duplo andar','Brancas de competição'],['OVERLORD','Biplano','Presas + capô custom','Difusor extremo','Douradas turbina']];
 function celOK(){return !!(CARS[view]&&CARS[view].cel&&window.AO_CEL&&window.AO_CEL.ok());}
 function celRow(code,title,names){var c=cu(view),v=c[code]|0,ok=celOK();return '<div class="gl">'+title+(ok?'':' · 🔒')+'</div><div class="og">'+names.map(function(n,i){return '<button class="op'+(v===i?' on':'')+'"'+(ok?'':' disabled')+' data-pf="'+code+':'+i+'"><b>'+n+'</b><small>'+(v===i?'EM USO':'LIBERADO')+'</small></button>';}).join('')+'</div>';}
-function celKitSec(){var c=cu(view),k=c.cbk|0,ok=celOK(),h='<div class="celbadge">✦ EXCLUSIVO — PORSCHE GT3 CELESTIAL</div>';
+function celKitSec(){var c=cu(view),k=c.cbk|0,ok=celOK(),h='<div class="celbadge">✦ EXCLUSIVO — PORSCHE GT3 CELESTIAL'+(ok&&window.__celNo?'<span class="celno">EDIÇÃO '+celNo(window.__celNo)+' / 005</span>':'')+'</div>';
  if(!ok)return h+'<div class="hn">🔒 Kits bloqueados: disponíveis só para quem possui a Porsche 911 GT3 RS Celestial.</div>';
  h+='<div class="gl">Body Kit</div><div class="og">'+CEL_KITS.map(function(t,i){return '<button class="op'+(k===i?' on':'')+'" data-pf="cbk:'+i+'"><b>'+t.n+'</b><small>'+(k===i?'EM USO':i?'LIBERADO':'ORIGINAL')+'</small></button>';}).join('')+'</div>';
  h+='<div class="hn" style="color:#cfd3dc;font-weight:600">'+CEL_KITS[k].d+'</div>'+celRow('cbs','Aerofólio',CEL_WINGS)+celRow('cbw','Rodas',CEL_WHEELS);
@@ -5204,7 +5204,7 @@ function draw(){view='card';root.className='on vcard '+(P.style||'neon');root.st
   B().innerHTML=h+'</div></div></div>';B().scrollTop=0;
   try{window.AO_FAVCAR&&AO_FAVCAR.mount(B(),P);}catch(e){console.error(e);}
   try{garage(false);}catch(e){console.error(e);}
-  {const who=P;rpc('celestial_stock',{p_user:who.username}).then(r=>{const n=B().querySelector('.pfh .nm');if(who===P&&r&&r.owner&&n&&!n.querySelector('.celtag'))n.insertAdjacentHTML('beforeend','<span class="pill celtag">✦ CELESTIAL</span>');}).catch(()=>{});}
+  {const who=P;rpc('celestial_stock',{p_user:who.username}).then(r=>{const n=B().querySelector('.pfh .nm');if(who===P&&r&&r.owner&&n&&!n.querySelector('.celtag'))n.insertAdjacentHTML('beforeend','<span class="pill celtag">✦ CELESTIAL'+(r.owner_no?' '+celNo(r.owner_no):'')+'</span>');}).catch(()=>{});}
   const on=(i,f)=>{const e=$(i);if(e)e.onclick=f;};on('pfEd',edit);on('pfAd',adm);
   const fr=a=>async()=>{try{await rpc('pf_friend',{p_user:P.username,p_action:a});await load(P.username);}catch(e){say(eM(e),'e');}};
   on('pfFa',fr('add'));on('pfFc',fr('cancel'));on('pfFo',fr('accept'));on('pfFr',()=>{if(confirm('Remover dos amigos?'))fr('remove')();});
@@ -6817,6 +6817,8 @@ function logged(){try{var s=A2.state();return !!(s&&s.me&&s.ready);}catch(e){ret
 function celParty_old(){try{if(owned.indexOf('porsche_gt3_celestial')<0||localStorage.getItem('ao_cel_seen'))return;localStorage.setItem('ao_cel_seen','1');}catch(e){return;}
   var d=document.createElement('div');d.id='celWin';var s='';for(var i=0;i<30;i++)s+='<i style="left:'+(i*37%100)+'%;animation-delay:'+(i%10)*.2+'s">✦</i>';
   d.innerHTML=s+'<div><small>EDIÇÃO LIMITADA</small><h2>PORSCHE GT3 CELESTIAL</h2><p>Agora é sua. Equipe na garagem.</p><button>CONTINUAR</button></div>';document.body.appendChild(d);d.querySelector('button').onclick=function(){d.remove();};}
+window.celNo=function(n){n=+n||0;return n>=1&&n<=5?'#'+('00'+n).slice(-3):'';};
+(function(){var st=document.createElement('style');st.textContent='.celno{display:inline-block;margin-left:6px;padding:2px 9px;border-radius:999px;font-weight:900;letter-spacing:.08em;color:#1a1200;background:linear-gradient(135deg,#ffe58a,#e8c05a 55%,#b8892a);box-shadow:0 0 10px rgba(232,192,90,.55)}';document.head.appendChild(st);})();
 window.AO_CEL={ok:function(){return logged()&&stateOk&&owned.indexOf('porsche_gt3_celestial')>=0;}};
 function celParty(){
   try{if(owned.indexOf('porsche_gt3_celestial')<0||localStorage.getItem('ao_cel_seen')||window.__celCin)return;localStorage.setItem('ao_cel_seen','1');}catch(e){return;}
@@ -6837,7 +6839,7 @@ function celParty(){
    '#celCin .sk{position:absolute;right:12px;top:calc(env(safe-area-inset-top,0px) + 12px);z-index:3;padding:9px 16px;border-radius:99px;border:1px solid rgba(255,255,255,.35);background:rgba(0,0,0,.45);color:#fff;font-weight:800;font-size:12px;letter-spacing:.1em}'+
    '#celCin.fl::after{content:"";position:absolute;inset:0;background:#fff;opacity:0;animation:celFl .5s ease-out}@keyframes celFl{0%{opacity:.55}100%{opacity:0}}';
    document.head.appendChild(st);}
-  d.id='celCin';d.innerHTML='<canvas></canvas><div class="cv"></div><div class="bar t"></div><div class="bar b"></div><div class="tx"><small>VOCÊ DESBLOQUEOU UMA LENDA</small><h1>PORSCHE 911 GT3 RS</h1><h3>CELESTIAL EDITION</h3></div>'+
+  d.id='celCin';d.innerHTML='<canvas></canvas><div class="cv"></div><div class="bar t"></div><div class="bar b"></div><div class="tx"><small>VOCÊ DESBLOQUEOU UMA LENDA</small><h1>PORSCHE 911 GT3 RS</h1><h3>CELESTIAL EDITION'+(window.__celNo?' · '+celNo(window.__celNo)+' / 005':'')+'</h3></div>'+
    '<div class="ok"><div class="ck">✓</div><b>VEÍCULO ADICIONADO À SUA GARAGEM</b><small>Todos os Body Kits Celestiais estão liberados na personalização.</small><button>CONTINUAR</button></div><button class="sk">PULAR ▶▶</button>';
   document.body.appendChild(d);
   var tx=d.querySelector('.tx'),okc=d.querySelector('.ok'),cv=d.querySelector('canvas');
@@ -6926,7 +6928,7 @@ function applyOwnership(){setTimeout(celParty,0);try{var _ok=window.AO_CEL.ok();
 }
 async function syncState(){
   if(syncing)return;syncing=true;
-  try{if(logged()){var d=await rpc('shop_my_state');owned=d.cars||[];tickets=+d.tickets||0;stateOk=true;}else{stateOk=false;owned=[];tickets=0;}}
+  try{if(logged()){var d=await rpc('shop_my_state');owned=d.cars||[];tickets=+d.tickets||0;window.__celNo=d.cel_no||null;stateOk=true;}else{stateOk=false;owned=[];tickets=0;window.__celNo=null;}}
   catch(e){/* servidor sem loja ainda: não libera nada */stateOk=false;}
   applyOwnership();paintBadge();syncing=false;
 }
@@ -7006,7 +7008,7 @@ function draw(focus){
     list.sort(function(a,b){return (b.car_id==='porsche_gt3_celestial')-(a.car_id==='porsche_gt3_celestial');});
      list.forEach(function(p){var i=VIDX[p.car_id];if(i==null)return;var c=CARS[i],has=owned.indexOf(p.car_id)>=0,t=G.CARS[i];
       if(c.cel){var n=celSt?celSt.available:null,mine=celSt&&celSt.pending;
-       h+='<div class="card celc"><small>GARAGEM CELESTIAL — EDIÇÕES LIMITADAS</small><div class="celimg" data-celimg="'+i+'"></div><h3>'+c.n+'</h3><em>✦ CELESTIAL · VIP CELESTIAL ✦</em>'+
+       h+='<div class="card celc"><small>GARAGEM CELESTIAL — EDIÇÕES LIMITADAS</small><div class="celimg" data-celimg="'+i+'"></div><h3>'+c.n+(has&&window.__celNo?'<span class="celno">'+celNo(window.__celNo)+'</span>':'')+'</h3><em>✦ CELESTIAL · VIP CELESTIAL ✦</em>'+
        '<div class="celst"><div><b>900</b>original</div><div><b>1045</b>tunada</div><div><b>1089</b>nitro km/h</div></div>'+
        '<div class="celq">'+(n==null?'Estoque indisponível':n>0?n+'/5 UNIDADES DISPONÍVEIS':'ESGOTADO — EDIÇÃO LIMITADA')+'</div><span class="pr">'+brl(p.price_cents)+'</span>'+
        '<div class="row2"><button data-v3d="'+i+'">🔎 VER EM 3D</button>'+(has?'<button disabled>✔ NA SUA GARAGEM</button>':'<button class="celb" data-buy="'+esc(p.id)+'"'+(p.available&&n!=null&&(n>0||mine)?'':' disabled')+'>'+(mine?'VER MEU PEDIDO':n===0?'ESGOTADO':'✦ COMPRAR COM PIX')+'</button>')+'</div><small>1 por jogador. A unidade fica reservada por 24 h ou, após “Já paguei”, até a conferência.</small></div>';return;}
@@ -7135,7 +7137,7 @@ function pcard(p){var q=function(f,v,t){return '<label class="mt">'+t+'</label><
   var promoEnd=p.promo_ends_at?new Date(p.promo_ends_at).toISOString().slice(0,16):'';
   return '<div class="card" data-pid="'+esc(p.id)+'"><div class="r"><b>'+esc(p.name||'Novo produto')+'</b><label class="mt"><input type="checkbox" data-f="active" style="width:auto;margin:0 6px 0 0"'+(p.active?' checked':'')+'>ativo</label></div>'+
    q('id',p.id,'ID (a-z, 0-9, _)')+q('name',p.name,'Nome')+'<label class="mt">Tipo</label><select data-f="kind"><option value="gold"'+(p.kind==='gold'?' selected':'')+'>Gold</option><option value="tickets"'+(p.kind==='tickets'?' selected':'')+'>Tickets</option><option value="car"'+(p.kind==='car'?' selected':'')+'>Carro VIP</option></select>'+
-   q('qty',p.qty,'Quantidade (Gold/Tickets)')+'<label class="mt">Carro (só tipo Carro VIP)</label><select data-f="car_id"><option value="">—</option><option value="vip_rs"'+(p.car_id==='vip_rs'?' selected':'')+'>OUTLAW VIP RS</option><option value="vip_x"'+(p.car_id==='vip_x'?' selected':'')+'>OUTLAW VIP X</option></select>'+
+   q('qty',p.qty,'Quantidade (Gold/Tickets)')+'<label class="mt">Carro (só tipo Carro VIP)</label><select data-f="car_id"><option value="">—</option><option value="vip_rs"'+(p.car_id==='vip_rs'?' selected':'')+'>OUTLAW VIP RS</option><option value="vip_x"'+(p.car_id==='vip_x'?' selected':'')+'>OUTLAW VIP X</option><option value="porsche_gt3_celestial"'+(p.car_id==='porsche_gt3_celestial'?' selected':'')+'>PORSCHE GT3 CELESTIAL</option></select>'+
    q('price_cents',p.price_cents,'Preço em CENTAVOS (ex.: 1990 = R$ 19,90)')+q('promo_price_cents',p.promo_price_cents,'Preço promocional em centavos (vazio = sem promoção)')+
    '<label class="mt">Fim da promoção (vazio = sem prazo)</label><input type="datetime-local" data-f="promo_ends_at" value="'+promoEnd+'">'+q('gold_price',p.gold_price,'Preço em Gold (só carros; vazio = só PIX)')+q('sort',p.sort,'Ordem')+
    '<button class="go" data-sv="'+esc(p.id)+'" style="width:100%">SALVAR</button></div>';}
